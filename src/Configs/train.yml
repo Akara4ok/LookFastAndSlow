@@ -1,0 +1,13 @@
+ObjectDetector:
+  seed: 42
+  data:
+    path: 'Data/'
+    test_percent: 0.2
+  train:
+    epochs: 30
+    batch_size: 8
+    # save_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/saved_model/ #colab
+    # tensorboard_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/tensor_board/ #colab
+  lr:
+    initial_lr: 0.001
+    
