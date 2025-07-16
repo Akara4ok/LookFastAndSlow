@@ -15,10 +15,39 @@ class SSDHead():
         aspects_size = [len(x) + 1 for x in aspects]
         labels = []
         boxes = []
+    
         for i, output in enumerate(backbone.bridge_layers):
             aspect_size = aspects_size[i]
-            labels.append(layers.SeparableConv2D(aspect_size * num_labels, (3, 3), padding="same", activation="softmax")(output))
-            boxes.append(layers.SeparableConv2D(aspect_size * 4, (3, 3), padding="same")(output))
+    
+            dropout_rate = 0.2  # або 0.3, залежно від спостережень
+
+            if(i != len(backbone.bridge_layers) - 1):
+                cls_layer = layers.SeparableConv2D(
+                    aspect_size * num_labels,
+                    (3, 3),
+                    padding="same"
+                )(output)
+                
+                box_layer = layers.SeparableConv2D(
+                    aspect_size * 4,
+                    (3, 3),
+                    padding="same"
+                )(output)
+            else:
+                cls_layer = layers.Conv2D(
+                    aspect_size * num_labels,
+                    (1, 1),
+                    padding="valid"
+                )(output)
+                
+                box_layer = layers.SeparableConv2D(
+                    aspect_size * 4,
+                    (1, 1),
+                    padding="valid"
+                )(output)
+            labels.append(cls_layer)
+            boxes.append(box_layer)
+    
         pred_labels = self.concatenate_head(labels, num_labels, name="cls")
         pred_deltas = self.concatenate_head(boxes, 4, name="loc")
         return pred_deltas, pred_labels

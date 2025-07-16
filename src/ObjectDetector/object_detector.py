@@ -78,7 +78,7 @@ class ObjectDetector():
         custom_loss = SSDLoss()
         
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=self.config['lr']['initial_lr']),
             loss=[custom_loss.cls_loss, custom_loss.loc_loss]
         )
         

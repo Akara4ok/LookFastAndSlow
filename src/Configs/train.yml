@@ -8,6 +8,8 @@ ObjectDetector:
     batch_size: 8
     # save_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/saved_model/ #colab
     # tensorboard_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/tensor_board/ #colab
+  model:
+    path: "Model/voc.weights.h5"
   lr:
     initial_lr: 0.001
     
