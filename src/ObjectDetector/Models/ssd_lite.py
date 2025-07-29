@@ -12,7 +12,7 @@ class SSDLite(nn.Module):
 
         self.backbone = LiteMobileNetBackbone(input_size)
 
-        self.head = SSDHead([96, 1280, 512, 256, 256, 64],
+        self.head = SSDHead([576, 1280, 512, 256, 256, 64],
                             num_classes,
                             aspects)
 

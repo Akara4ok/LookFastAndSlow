@@ -1,7 +1,19 @@
-import torch
+from ConfigUtils.config import Config
+from pathlib import Path
+import logging
+from Dataset.xml_star_dataset import XMLStarDataset
+from ObjectDetector.object_detector import ObjectDetector
 from ObjectDetector.Anchors.mobilenet_anchors import specs
-from ObjectDetector.Anchors.anchors import Anchors
+from torchsummary import summary
 
-anchors = Anchors(specs, 300, [0.1, 0.1, 0.2, 0.2])
-print(anchors.center_anchors.shape)
+logging.basicConfig(level=logging.INFO)
+
+config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
+
+dataset = XMLStarDataset(config['data']['path'], config['model']['img_size'])
+
+objectDetector = ObjectDetector(['None', 'Star'], config, specs)
+
+summary(objectDetector.model, (3, 300, 300))
+
 

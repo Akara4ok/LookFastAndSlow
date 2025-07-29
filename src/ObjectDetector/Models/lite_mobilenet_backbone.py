@@ -57,10 +57,10 @@ class LiteMobileNetBackbone(nn.Module):
         for i in range(13):
             x = self.features[i](x)
             
-        # features.append(self.block13_expand(x))
+        features.append(self.block13_expand(x))
         
         x = self.features[13](x)
-        features.append(x)
+        # features.append(x)
         for i in range(14, len(self.features)):
             x = self.features[i](x)
         

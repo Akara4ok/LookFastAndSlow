@@ -21,7 +21,7 @@ def visulize(image: Image, detection_result: dict, label_map: list[str]):
         if(label == "background"):
             continue
         score = scores[i]
-        ymin, xmin, ymax, xmax = box
+        xmin, ymin, xmax, ymax = box
         h = ymax - ymin
         w = xmax - xmin
         rect = plt.Rectangle((xmin * 300, ymin * 300), w * 300, h * 300,

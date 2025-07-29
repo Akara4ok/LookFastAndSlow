@@ -24,7 +24,6 @@ class ObjectDetector:
 
         self.model = SSDLite(config['model']['img_size'], len(labels), self.anchors.aspects).to(self.device)
 
-
         self.check_dims()
 
         self.post = PostProcessor(self.anchors,

@@ -53,14 +53,16 @@ class SSDHead(nn.Module):
         return x.view(n, -1, dim)                   # (N,H*W*anchors,dim)
 
     def forward(self, features):
-        cls_logits = []
-        bbox_pred = []
-        for feature, cls_header, reg_header in zip(features, self.cls_headers, self.reg_headers):
-            cls_logits.append(cls_header(feature).permute(0, 2, 3, 1).contiguous())
-            bbox_pred.append(reg_header(feature).permute(0, 2, 3, 1).contiguous())
+        locs, confs = [], []
+        for feat, cls_conv, box_conv in zip(features,
+                                            self.cls_convs,
+                                            self.box_convs):
+            cls = self._flatten(self._permute(cls_conv(feat)),
+                                 self.num_classes)
+            box = self._flatten(self._permute(box_conv(feat)), 4)
+            confs.append(cls)
+            locs.append(box)
 
-        batch_size = features[0].shape[0]
-        cls_logits = torch.cat([c.view(c.shape[0], -1) for c in cls_logits], dim=1).view(batch_size, -1, self.cfg.MODEL.NUM_CLASSES)
-        bbox_pred = torch.cat([l.view(l.shape[0], -1) for l in bbox_pred], dim=1).view(batch_size, -1, 4)
-
-        return bbox_pred, cls_logits
+        confs = torch.cat(confs, dim=1)             # (N, ΣA, num_classes)
+        locs  = torch.cat(locs,  dim=1)             # (N, ΣA, 4)
+        return locs, confs
