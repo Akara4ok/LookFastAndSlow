@@ -1,57 +1,71 @@
-import tensorflow as tf
+from typing import Dict
 
-class PostProcessing():
-    def __init__(self, anchors, variances, confidence=0.5, iou_thresh=0.5, top_k=1):
+import torch
+import torch.nn.functional as F
+from torchvision.ops import nms
+from ObjectDetector.Anchors.anchors import Anchors
+
+class PostProcessor:
+    def __init__(self,
+                 anchors: Anchors,
+                 conf_thresh: float = 0.5,
+                 iou_thresh:  float = 0.5,
+                 top_k: int = 1):
         self.anchors = anchors
-        self.variances = variances
-        self.confidence = confidence
-        self.iou_threshold = iou_thresh
+        self.conf_thresh = conf_thresh
+        self.iou_thresh = iou_thresh
         self.top_k = top_k
 
-    def decode_boxes(self, pred_loc: tf.Tensor) -> tf.Tensor:
-        pred_loc *= self.variances
-        ty, tx, th, tw = tf.unstack(pred_loc, axis=-1)
+    def ssd_postprocess(self, cls_logits: torch.Tensor, pred_loc: torch.Tensor) -> Dict[str, torch.Tensor]:
+        scores = F.softmax(cls_logits[0], dim=-1)
+        print(scores)
+        variances = self.anchors.variances
+        boxes = Anchors.decode_boxes(pred_loc[0], self.anchors.center_anchors, variances[:2], variances[2:])
+        boxes = Anchors.center_to_corner(boxes)
 
-        ymin, xmin, ymax, xmax = tf.unstack(self.anchors, axis=-1)
-        h = ymax - ymin
-        w = xmax - xmin
-        cy = ymin + 0.5 * h
-        cx = xmin + 0.5 * w
+        all_boxes = []
+        all_scores = []
+        all_labels = []
 
-        pred_cy = ty * h + cy
-        pred_cx = tx * w + cx
-        pred_h = tf.exp(th) * h
-        pred_w = tf.exp(tw) * w
+        num_classes = scores.size(1)
 
-        ymin = pred_cy - pred_h / 2.0
-        xmin = pred_cx - pred_w / 2.0
-        ymax = pred_cy + pred_h / 2.0
-        xmax = pred_cx + pred_w / 2.0
+        for c in range(1, num_classes):
+            cls_scores = scores[:, c]
+            keep = cls_scores > self.conf_thresh
+            if not keep.any():
+                continue
 
-        return tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+            cls_boxes  = boxes[keep]
+            cls_scores = cls_scores[keep]
+            keep_idx = nms(cls_boxes, cls_scores, self.iou_thresh)
+            keep_idx = keep_idx[: self.top_k]            # top-k per class
 
-    def ssd_postprocess(self, cls_logits: tf.Tensor, pred_loc: tf.Tensor) -> dict:
-        probs = tf.nn.softmax(cls_logits[0], axis=-1)
-        boxes = self.decode_boxes(pred_loc[0])
+            all_boxes.append(cls_boxes[keep_idx])
+            all_scores.append(cls_scores[keep_idx])
+            all_labels.append(torch.full((keep_idx.numel(),),
+                                          c,
+                                          dtype=torch.int32,
+                                          device=cls_boxes.device))
 
-        boxes_expanded = tf.expand_dims(boxes, axis=1)
-        boxes_expanded = tf.expand_dims(boxes_expanded, axis=0)
+        if not all_boxes:
+            empty = torch.empty((0, 4), device=boxes.device)
+            return dict(boxes=empty,
+                        scores=torch.empty(0, device=boxes.device),
+                        classes=torch.empty(0, dtype=torch.int32, device=boxes.device),
+                        num_detections=torch.tensor([0], dtype=torch.int32))
 
-        scores = tf.expand_dims(probs, axis=0)  # (1, N, C)
+        boxes_cat   = torch.cat(all_boxes)
+        scores_cat  = torch.cat(all_scores)
+        labels_cat  = torch.cat(all_labels)
 
-        selected = tf.image.combined_non_max_suppression(
-            boxes=boxes_expanded,
-            scores=scores,
-            max_output_size_per_class=self.top_k,
-            max_total_size=self.top_k,
-            iou_threshold=self.iou_threshold,
-            score_threshold=self.confidence,
-            clip_boxes=False
-        )
+        order = scores_cat.argsort(descending=True)[: self.top_k]
+        boxes_cat  = boxes_cat[order]
+        scores_cat = scores_cat[order]
+        labels_cat = labels_cat[order]
 
-        return {
-            "boxes": selected.nmsed_boxes,
-            "scores": selected.nmsed_scores,
-            "classes": tf.cast(selected.nmsed_classes, tf.int32),
-            "num_detections": selected.valid_detections
-        }
+        return dict(boxes=boxes_cat,
+                    scores=scores_cat,
+                    classes=labels_cat,
+                    num_detections=torch.tensor([boxes_cat.size(0)],
+                                                dtype=torch.int32,
+                                                device=boxes_cat.device))

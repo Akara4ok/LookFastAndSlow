@@ -4,7 +4,7 @@ ObjectDetector:
     path: 'Data/'
     test_percent: 0.2
   train:
-    epochs: 30
+    epochs: 100
     batch_size: 8
     # save_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/saved_model/ #colab
     # tensorboard_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/tensor_board/ #colab

@@ -35,8 +35,6 @@ class Config:
         config = Config.parse_double_key(config, 'lr', 'initial_lr', const.LR)
         
         #anchors
-        config = Config.parse_double_key(config, 'anchors', 'feature_map', const.FEATURE_MAP_SHAPES)
-        config = Config.parse_double_key(config, 'anchors', 'aspects', const.ASPECT_RATIOS)
         config = Config.parse_double_key(config, 'anchors', 'variances', const.VARIANCES)
         config = Config.parse_double_key(config, 'anchors', 'iou_threshold', const.IOU_THRESHOLD)
         config = Config.parse_double_key(config, 'anchors', 'confidence', const.CONFIDENCE)

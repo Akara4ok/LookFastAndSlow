@@ -1,89 +1,94 @@
 import os
 import xml.etree.ElementTree as ET
-import tensorflow as tf
+from typing import List, Tuple, Dict
 
-class XMLStarDataset():
-    def __init__(self, dataset_path: str, img_size: tuple[int]) -> None:
+import torch
+from torch.utils.data import Dataset
+from torchvision import transforms
+from PIL import Image
+
+
+class XMLStarDataset(Dataset):
+    def __init__(self,
+                 dataset_path: str,
+                 img_size: Tuple[int, int]):
+        super().__init__()
         self.dataset_path = dataset_path
         self.img_size = img_size
-        self.data, self.labels = self.build_dataset()
 
-    def parse_voc_xml(self, xml_path: str) -> tuple[str, list, list]:
+        self.samples, self.label_map = self._scan_dirs()
+        self.labels = [name for name, _ in sorted(self.label_map.items(),
+                                                  key=lambda p: p[1])]
+        self.transform = transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor()
+        ])
+
+    @staticmethod
+    def _parse_xml(xml_path: str) -> Tuple[str, List[List[float]], List[str]]:
         tree = ET.parse(xml_path)
         root = tree.getroot()
 
-        filename = root.find('filename').text
-        size = root.find('size')
-        width = int(size.find('width').text)
-        height = int(size.find('height').text)
+        filename = root.find("filename").text
+        size = root.find("size")
+        w = int(size.find("width").text)
+        h = int(size.find("height").text)
 
         boxes = []
         labels = []
+        
+        for obj in root.findall("object"):
+            labels.append(obj.find("name").text)
 
-        for obj in root.findall('object'):
-            label = obj.find('name').text
-            labels.append(label)
-
-            bbox = obj.find('bndbox')
-            xmin = float(bbox.find('xmin').text) / width
-            ymin = float(bbox.find('ymin').text) / height
-            xmax = float(bbox.find('xmax').text) / width
-            ymax = float(bbox.find('ymax').text) / height
-            boxes.append([ymin, xmin, ymax, xmax])  # у форматі [ymin, xmin, ymax, xmax] як очікує TensorFlow
+            bbox = obj.find("bndbox")
+            xmin = float(bbox.find("xmin").text) / w
+            ymin = float(bbox.find("ymin").text) / h
+            xmax = float(bbox.find("xmax").text) / w
+            ymax = float(bbox.find("ymax").text) / h
+            boxes.append([xmin, ymin, xmax, ymax])
 
         return filename, boxes, labels
 
-    def load_dataset(self, annotation_dir: str, images_dir: str) -> tuple[dict, dict]:
-        all_data = []
-        label_map = {}
-        label_counter = 1  # 0 — фон
+    def _scan_dirs(self) -> Tuple[List[Dict], Dict[str, int]]:
+        annotation_dir = self.dataset_path + "/annotations"
+        images_dir = self.dataset_path + "/images"
+
+        samples, label_map = [], {}
+        next_id = 1
 
         for xml_file in os.listdir(annotation_dir):
-            if not xml_file.endswith('.xml'):
+            if not xml_file.endswith(".xml"):
                 continue
 
             xml_path = os.path.join(annotation_dir, xml_file)
-            filename, boxes, labels = self.parse_voc_xml(xml_path)
+            filename, boxes, labels = self._parse_xml(xml_path)
 
-            # Конвертація класів у індекси
-            label_ids = []
+            label_ids  = []
             for label in labels:
                 if label not in label_map:
-                    label_map[label] = label_counter
-                    label_counter += 1
-                label_ids.append(label_map[label])
+                    label_map[label] = next_id
+                    next_id += 1
+                label_ids .append(label_map[label])
 
-            all_data.append({
+            samples.append({
                 "image_path": os.path.join(images_dir, filename),
                 "boxes": boxes,
                 "labels": label_ids
             })
 
-        return all_data, label_map
+        return samples, label_map
 
-    def load_image_and_labels(self, example: dict) -> tuple[tf.Tensor, tf.Tensor]:
-        image = tf.io.read_file(example['image_path'])
-        image = tf.image.decode_jpeg(image, channels=3)
-        image = tf.image.resize(image, (self.img_size[0], self.img_size[1]))
-        image = image / 255.0
+    def __len__(self):
+        return len(self.samples)
 
-        boxes = tf.convert_to_tensor(example['boxes'], dtype=tf.float32)
-        labels = tf.convert_to_tensor(example['labels'], dtype=tf.int32)
+    def __getitem__(self, idx):
+        sample = self.samples[idx]
 
-        return image, {"boxes": boxes, "labels": labels}
+        img = Image.open(sample["image_path"]).convert("RGB")
+        img = self.transform(img)
 
-    def build_dataset(self, shuffle: bool = True) -> tuple[tf.data.Dataset, list[str]]:
-        dataset_info, label_map = self.load_dataset(self.dataset_path + "/annotations", self.dataset_path + "/images")
-        labels = [s for s, i in sorted(label_map.items(), key=lambda x: x[1])]
+        boxes  = torch.tensor(sample["boxes"], dtype=torch.float32)
+        labels = torch.tensor(sample["labels"], dtype=torch.int64)
 
-        ds = tf.data.Dataset.from_generator(
-            lambda: iter(dataset_info),
-            output_types={"image_path": tf.string, "boxes": tf.float32, "labels": tf.int32}
-        )
-
-        if shuffle:
-            ds = ds.shuffle(buffer_size=1000)
-
-        ds = ds.map(self.load_image_and_labels, num_parallel_calls=tf.data.AUTOTUNE)
-        
-        return ds, labels
+        target = {"boxes": boxes, "labels": labels}
+        return img, target

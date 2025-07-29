@@ -1,53 +1,66 @@
-import tensorflow as tf
-from tensorflow.keras import layers, models, activations
-from ObjectDetector.Models.backbone import Backbone
+import torch
+import torch.nn as nn
 
-class SSDHead():
-    def __init__(self, backbone: Backbone, num_labels: int, aspects: list[list[float]]):
-        self.loc_final, self.cls_final = self.build_head(backbone, num_labels, aspects)
-        pass
-    
-    def concatenate_head(self, x: tf.Tensor, dim: int, name: str) -> tf.Tensor:
-        reshaped = [layers.Reshape((-1, dim))(layer) for layer in x]
-        return layers.Concatenate(axis=1, name=name)(reshaped)
 
-    def build_head(self, backbone: Backbone, num_labels: int, aspects: list[list[float]]) -> tuple[tf.Tensor, tf.Tensor]:
-        aspects_size = [len(x) + 1 for x in aspects]
-        labels = []
-        boxes = []
-    
-        for i, output in enumerate(backbone.bridge_layers):
-            aspect_size = aspects_size[i]
-    
-            dropout_rate = 0.2  # або 0.3, залежно від спостережень
+class SeparableConv2d(nn.Module):
+    """
+    Depth-wise separable conv mirroring tf.keras.layers.SeparableConv2D.
+    """
+    def __init__(self, cin, cout, k=3, stride=1, padding=1, bias=False):
+        super().__init__()
+        self.dw = nn.Conv2d(cin, cin, k, stride, padding,
+                            groups=cin, bias=bias)
+        self.pw = nn.Conv2d(cin, cout, 1, bias=bias)
 
-            if(i != len(backbone.bridge_layers) - 1):
-                cls_layer = layers.SeparableConv2D(
-                    aspect_size * num_labels,
-                    (3, 3),
-                    padding="same"
-                )(output)
-                
-                box_layer = layers.SeparableConv2D(
-                    aspect_size * 4,
-                    (3, 3),
-                    padding="same"
-                )(output)
-            else:
-                cls_layer = layers.Conv2D(
-                    aspect_size * num_labels,
-                    (1, 1),
-                    padding="valid"
-                )(output)
-                
-                box_layer = layers.SeparableConv2D(
-                    aspect_size * 4,
-                    (1, 1),
-                    padding="valid"
-                )(output)
-            labels.append(cls_layer)
-            boxes.append(box_layer)
-    
-        pred_labels = self.concatenate_head(labels, num_labels, name="cls")
-        pred_deltas = self.concatenate_head(boxes, 4, name="loc")
-        return pred_deltas, pred_labels
+    def forward(self, x):
+        return self.pw(self.dw(x))
+
+
+class SSDHead(nn.Module):
+    def __init__(self,
+                 out_channels,
+                 num_classes: int,
+                 aspects):
+        super().__init__()
+        self.num_classes = num_classes
+        aspect_sizes = [2 * len(a) + 2 for a in aspects]      # +1 for 1:1 default
+
+        cls_layers, box_layers = [], []
+        for idx, (out_channel, a_size) in enumerate(zip(out_channels, aspect_sizes)):
+            # All maps except the last use 3×3 separable conv
+            if idx < len(out_channels) - 1:
+                cls_layers.append(
+                    SeparableConv2d(out_channel, a_size * num_classes)
+                )
+                box_layers.append(
+                    SeparableConv2d(out_channel, a_size * 4)
+                )
+            else:  # final map – 1×1 convs
+                cls_layers.append(nn.Conv2d(out_channel,
+                                            a_size * num_classes, 1))
+                box_layers.append(nn.Conv2d(out_channel,
+                                            a_size * 4, 1))
+        self.cls_convs = nn.ModuleList(cls_layers)
+        self.box_convs = nn.ModuleList(box_layers)
+
+    @staticmethod
+    def _permute(x):
+        return x.permute(0, 2, 3, 1).contiguous()   # (N,C,H,W) -> (N,H,W,C)
+
+    @staticmethod
+    def _flatten(x, dim):
+        n, h, w, c = x.shape
+        return x.view(n, -1, dim)                   # (N,H*W*anchors,dim)
+
+    def forward(self, features):
+        cls_logits = []
+        bbox_pred = []
+        for feature, cls_header, reg_header in zip(features, self.cls_headers, self.reg_headers):
+            cls_logits.append(cls_header(feature).permute(0, 2, 3, 1).contiguous())
+            bbox_pred.append(reg_header(feature).permute(0, 2, 3, 1).contiguous())
+
+        batch_size = features[0].shape[0]
+        cls_logits = torch.cat([c.view(c.shape[0], -1) for c in cls_logits], dim=1).view(batch_size, -1, self.cfg.MODEL.NUM_CLASSES)
+        bbox_pred = torch.cat([l.view(l.shape[0], -1) for l in bbox_pred], dim=1).view(batch_size, -1, 4)
+
+        return bbox_pred, cls_logits

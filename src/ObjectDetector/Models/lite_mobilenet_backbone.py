@@ -1,47 +1,73 @@
-import tensorflow as tf
-from tensorflow.keras import layers, models, activations
-from ObjectDetector.Models.backbone import Backbone
+import torch
+import torch.nn as nn
+from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 
-class LiteMobileNetBackbone(Backbone):
-    def __init__(self, inputs: tf.Tensor):
+class InvertedResidualBlock(nn.Module):
+    def __init__(self, input_size, output_size, stride, expand):
         super().__init__()
-        self.model, self.bridge_layers = self.build_model(inputs)
+        hidden = int(round(input_size * expand))
+        self.residual = stride == 1 and input_size == output_size
 
-    def inverted_residual_block(self, x, inp, oup, stride, expand_ratio):
-        hidden_dim = int(inp * expand_ratio)
-        use_res_connect = stride == 1 and inp == oup
-    
-        out = x
-    
-        if expand_ratio != 1:
-            # pointwise
-            out = layers.Conv2D(hidden_dim, 1, padding='same', use_bias=False)(out)
-            out = layers.BatchNormalization()(out)
-            out = layers.ReLU(max_value=6.0)(out)
-    
-        # depthwise
-        out = layers.DepthwiseConv2D(kernel_size=3, strides=stride, padding='same', use_bias=False)(out)
-        out = layers.BatchNormalization()(out)
-        out = layers.ReLU(max_value=6.0)(out)
-    
-        # pointwise-linear
-        out = layers.Conv2D(oup, 1, padding='same', use_bias=False)(out)
-        out = layers.BatchNormalization()(out)
-    
-        if use_res_connect:
-            out = layers.Add()([x, out])
-    
+        layers = []
+        if(expand != 1):
+            layers += [
+                nn.Conv2d(input_size, hidden, 1, 1, 0, bias=False),
+                nn.BatchNorm2d(hidden),
+                nn.ReLU6(inplace=True)]
+            
+        layers += [
+            nn.Conv2d(hidden, hidden, 3, stride, 1, groups=hidden, bias=False),
+            nn.BatchNorm2d(hidden),
+            nn.ReLU6(inplace=True),
+            
+            nn.Conv2d(hidden, output_size, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(output_size),
+            ]
+        self.conv = nn.Sequential(*layers)
+
+    def forward(self, x):
+        out = self.conv(x)
+        if self.residual:
+            out = x + out
         return out
-    
-    def build_model(self, inputs: tf.Tensor) -> tuple[tf.keras.Model, list[layers.Layer]]:
-        base_model = tf.keras.applications.MobileNetV2(input_tensor=inputs, include_top=False, weights='imagenet')
-    
-        first_layer = base_model.get_layer("block_13_expand_relu").output
-        second_layer = base_model.output
-    
-        extra1 = self.inverted_residual_block(second_layer, 1280, 512, 2, 0.2)
-        extra2 = self.inverted_residual_block(extra1, 512, 256, 2, 0.25)
-        extra3 = self.inverted_residual_block(extra2, 256, 256, 2, 0.5)
-        extra4 = self.inverted_residual_block(extra3, 256, 64, 2, 0.25)
-    
-        return base_model, [first_layer, second_layer, extra1, extra2, extra3, extra4]
+
+
+class LiteMobileNetBackbone(nn.Module):
+    def __init__(self, input_size : int  = 300):
+        super().__init__()
+        self.input_size = input_size
+
+        mobilenet = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
+        self.features = mobilenet.features
+
+        self.connectors = nn.ModuleList([
+            InvertedResidualBlock(1280, 512, 2, 0.20),
+            InvertedResidualBlock(512, 256, 2, 0.25),
+            InvertedResidualBlock(256, 256, 2, 0.50),
+            InvertedResidualBlock(256, 64, 2, 0.25)
+        ])
+        
+        self.block13_expand = nn.Sequential(
+            self.features[13].conv[0],
+            self.features[13].conv[1]
+        )
+        
+    def forward(self, x):
+        features = []
+        for i in range(13):
+            x = self.features[i](x)
+            
+        # features.append(self.block13_expand(x))
+        
+        x = self.features[13](x)
+        features.append(x)
+        for i in range(14, len(self.features)):
+            x = self.features[i](x)
+        
+        features.append(x)
+
+        for extra in self.connectors:
+            x = extra(x)
+            features.append(x)
+
+        return features
