@@ -1,19 +1,12 @@
-from ConfigUtils.config import Config
-from pathlib import Path
-import logging
-from Dataset.xml_star_dataset import XMLStarDataset
-from ObjectDetector.object_detector import ObjectDetector
-from ObjectDetector.Anchors.mobilenet_anchors import specs
-from torchsummary import summary
+from torch.utils.data import DataLoader
+from Dataset.voc_dataset import VOCDataset
 
-logging.basicConfig(level=logging.INFO)
+# first call downloads & extracts automatically
+voc_train = VOCDataset("Data/VOCDevKit", "2007", "trainval", 300)
 
-config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
+loader = DataLoader(voc_train, batch_size=8,
+                    shuffle=True,
+                    collate_fn=lambda b: list(zip(*b)))
 
-dataset = XMLStarDataset(config['data']['path'], config['model']['img_size'])
-
-objectDetector = ObjectDetector(['None', 'Star'], config, specs)
-
-summary(objectDetector.model, (3, 300, 300))
-
-
+for images, targets in loader:
+    print(images[0].shape, targets[0]["boxes"].shape)

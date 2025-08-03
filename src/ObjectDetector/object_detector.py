@@ -11,7 +11,7 @@ from ObjectDetector.Models.ssd_lite import SSDLite
 from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
 from ObjectDetector.loss import SSDLoss
 from ObjectDetector.postprocessing import PostProcessor
-
+from ObjectDetector.map import MeanAveragePrecision
 
 class ObjectDetector:
     def __init__(self, labels: List[str], config: Dict, specs: List[AnchorSpec], device: torch.device | str | None = None):
@@ -35,6 +35,7 @@ class ObjectDetector:
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=self.cfg["lr"]["initial_lr"])
         self.writer = SummaryWriter(self.cfg["train"]["tensorboard_path"])
+        self.metric = MeanAveragePrecision(num_classes=len(self.labels))
 
     def check_dims(self):
         n_anchors = self.anchors.corner_anchors.size(0)
@@ -56,14 +57,15 @@ class ObjectDetector:
         return img.to(self.device), labels, loc_t
 
     def _collate(self, batch: torch.Tensor):
-        imgs, cls_t, loc_t = [], [], []
+        imgs, cls_t, loc_t, raw = [], [], [], []
         for img, tgt in batch:
             i, c, l = self._encode_sample(img, tgt)
             imgs.append(i)
             cls_t.append(c)
             loc_t.append(l)
+            raw.append(tgt)
 
-        return (torch.stack(imgs), torch.stack(cls_t), torch.stack(loc_t))
+        return (torch.stack(imgs), torch.stack(cls_t), torch.stack(loc_t), raw)
 
     def _split_datasets(self, full_ds: Dataset, test_ratio: float):
         test_len = int(len(full_ds) * test_ratio)
@@ -92,20 +94,22 @@ class ObjectDetector:
 
         for epoch in range(self.cfg["train"]["epochs"]):
             t0 = time.time()
-            train_loss, train_loc_loss, train_cls_loss = self._run_epoch(dl_train, True)
-            val_loss, val_loc_loss, val_cls_loss = self._run_epoch(dl_val, False)
+            train_loss, train_loc_loss, train_cls_loss, train_map = self._run_epoch(dl_train, True)
+            val_loss, val_loc_loss, val_cls_loss, val_map = self._run_epoch(dl_val, False)
             dt = time.time() - t0
 
             self.writer.add_scalar("loss/train", train_loss, epoch)
             self.writer.add_scalar("loss/train_loc", train_loc_loss, epoch)
             self.writer.add_scalar("loss/train_cls", train_cls_loss, epoch)
+            self.writer.add_scalar("loss/train_map", train_map, epoch)
             self.writer.add_scalar("loss/val", val_loss,   epoch)
             self.writer.add_scalar("loss/val_loc", val_loc_loss, epoch)
             self.writer.add_scalar("loss/val_cls", val_cls_loss, epoch)
+            self.writer.add_scalar("loss/val_map", val_map, epoch)
 
             logging.info(f"Epoch {epoch:03d} time {dt:.1f}s")
-            logging.info(f"train {train_loss:.4f} loc {train_loc_loss:.4f} cls {train_cls_loss:.4f}")
-            logging.info(f"val {val_loss:.4f} loc {val_loc_loss:.4f} cls {val_cls_loss:.4f}")
+            logging.info(f"train {train_loss:.4f} loc {train_loc_loss:.4f} cls {train_cls_loss:.4f} map {train_map:.4f}")
+            logging.info(f"val {val_loss:.4f} loc {val_loc_loss:.4f} cls {val_cls_loss:.4f} map {val_map:.4f}")
             logging.info(f"===================")
 
             if val_loss < best_val:
@@ -113,17 +117,18 @@ class ObjectDetector:
                 torch.save(self.model.state_dict(), self.cfg["model"]["path"])
                 logging.info(f"  ↳ new best, saved to {self.cfg['model']['path']}")
 
-    def _run_epoch(self, loader: DataLoader, train: bool) -> float:
+    def _run_epoch(self, loader: DataLoader, train: bool) -> tuple:
         if train:
             self.model.train()
         else:
             self.model.eval()
 
+        self.metric.reset()
         total_loss, n_batches = 0.0, 0
         total_loc, total_cls = 0.0, 0.0
 
         with torch.set_grad_enabled(train):
-            for imgs, cls_gt, loc_gt in loader:
+            for imgs, cls_gt, loc_gt, raw in loader:
                 imgs  = imgs.to(self.device)
                 cls_gt = cls_gt.to(self.device)
                 loc_gt = loc_gt.to(self.device)
@@ -132,18 +137,28 @@ class ObjectDetector:
 
                 loc_loss, cls_loss = self.criterion(loc_p, cls_p, loc_gt, cls_gt)
                 loss = loc_loss + cls_loss
-
+                
+                preds_batch = []
+                for cls_i, loc_i in zip(cls_p, loc_p):
+                    preds_batch.append(self.post.ssd_postprocess(cls_i, loc_i))
+                self.metric.update(preds_batch, raw)
+                
                 if train:
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
 
+
                 total_loss += loss.item()
                 total_loc += loc_loss.item()
                 total_cls += cls_loss.item()
-                n_batches  += 1
+                
+                n_batches += 1
 
-        return (total_loss / n_batches, total_loc / n_batches, total_cls / n_batches) 
+        res = self.metric.compute()
+        val_mAP = res["mAP"]
+        
+        return (total_loss / n_batches, total_loc / n_batches, total_cls / n_batches, val_mAP) 
 
     def load_weights(self, path: str):
         self.model.load_state_dict(torch.load(path, map_location=self.device))

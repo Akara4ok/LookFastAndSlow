@@ -17,10 +17,9 @@ class PostProcessor:
         self.top_k = top_k
 
     def ssd_postprocess(self, cls_logits: torch.Tensor, pred_loc: torch.Tensor) -> Dict[str, torch.Tensor]:
-        scores = F.softmax(cls_logits[0], dim=-1)
-        print(scores)
+        scores = F.softmax(cls_logits, dim=-1)
         variances = self.anchors.variances
-        boxes = Anchors.decode_boxes(pred_loc[0], self.anchors.center_anchors, variances[:2], variances[2:])
+        boxes = Anchors.decode_boxes(pred_loc, self.anchors.center_anchors, variances[:2], variances[2:])
         boxes = Anchors.center_to_corner(boxes)
 
         all_boxes = []
