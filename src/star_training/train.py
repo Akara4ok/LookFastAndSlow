@@ -16,8 +16,10 @@ config['model']['path'] = "Model/star.weights.h5"
 config['train']['epochs'] = 100
 config['data']['path'] = "Data/"
 config['anchors']['iou_threshold'] = 0.45
+config['anchors']['post_iou_threshold'] = 0.45
 config['anchors']['confidence'] = 0.5
 config['anchors']['top_k_classes'] = 200
+config['lr']['min_lr'] = 1e-5
 
 dataset = XMLStarDataset(config['data']['path'], config['model']['img_size'])
 

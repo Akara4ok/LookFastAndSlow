@@ -21,3 +21,4 @@ BATCH_SIZE = 8
 
 #lr
 LR = 0.0001
+MIN_LR = None

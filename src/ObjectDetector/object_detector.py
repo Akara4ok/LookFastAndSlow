@@ -12,7 +12,7 @@ from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
 from ObjectDetector.loss import SSDLoss
 from ObjectDetector.postprocessing import PostProcessor
 from ObjectDetector.map import MeanAveragePrecision
-from Dataset.cached_dataset import CachedDataLoader
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class ObjectDetector:
     def __init__(self, labels: List[str], config: Dict, specs: List[AnchorSpec], device: torch.device | str | None = None):
@@ -37,6 +37,17 @@ class ObjectDetector:
                                           lr=self.cfg["lr"]["initial_lr"], weight_decay=5e-4)
         self.writer = SummaryWriter(self.cfg["train"]["tensorboard_path"])
         self.metric = MeanAveragePrecision(num_classes=len(self.labels), device=self.device)
+        
+        self.scheduler: CosineAnnealingLR = None
+        min_lr = self.cfg["lr"]["min_lr"]
+        print(f"!!!!{min_lr}!!!!")
+        if(min_lr is not None):
+            self.scheduler = CosineAnnealingLR(
+                self.optimizer,
+                T_max=self.cfg["train"]["epochs"], # number of epochs
+                eta_min=1e-5                       # min LR
+            )
+
 
     def check_dims(self):
         n_anchors = self.anchors.corner_anchors.size(0)
@@ -82,7 +93,6 @@ class ObjectDetector:
                               shuffle=True,
                               collate_fn=self._collate,
                               drop_last=True)
-        dl_train = CachedDataLoader(dl_train)
 
         dl_val   = DataLoader(ds_val,
                               batch_size=self.cfg["train"]["batch_size"],
@@ -90,7 +100,6 @@ class ObjectDetector:
                               num_workers=0,
                               collate_fn=self._collate,
                               drop_last=False)
-        dl_val = CachedDataLoader(dl_val)
 
         best_val = float("inf")
         ckpt_dir = Path(self.cfg["model"]["path"]).expanduser().parent
@@ -114,8 +123,12 @@ class ObjectDetector:
             self.writer.add_scalar("loss/val_loc", val_loc_loss, epoch)
             self.writer.add_scalar("loss/val_cls", val_cls_loss, epoch)
             self.writer.add_scalar("loss/val_map", val_map, epoch)
-
-            logging.info(f"Epoch {epoch:03d} time {dt:.1f}s")
+            
+            if(self.scheduler is not None):
+                self.scheduler.step()
+                logging.info(f"Epoch {epoch:03d} time {dt:.1f}s lr {self.scheduler.get_last_lr()[0]:.6f}")
+            else:
+                logging.info(f"Epoch {epoch:03d} time {dt:.1f}s")
 
             log_metric = f"train {train_loss:.4f} loc {train_loc_loss:.4f} cls {train_cls_loss:.4f}"
             if(compute_metric):

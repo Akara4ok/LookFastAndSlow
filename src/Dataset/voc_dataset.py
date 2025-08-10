@@ -39,7 +39,8 @@ class VOCDataset(Dataset):
                  root: str | Path,
                  year: int,
                  split: Literal["train", "val", "trainval", "test"] = "trainval",
-                 img_size: int = 300):
+                 img_size: int = 300,
+                 use_cache = True):
         super().__init__()
         self.root = Path(root).expanduser()
         self.year = str(year)
@@ -60,6 +61,13 @@ class VOCDataset(Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                 std =[0.229, 0.224, 0.225]),
         ])
+        
+        self.use_cache = use_cache
+        self.is_cached = False
+        self.cached_data = []
+        
+        if(self.use_cache):
+            self._build_cache()
 
     def _download_if_needed(self):
         needed_keys = ["trainval"] if self.split != "test" else ["test"]
@@ -125,10 +133,18 @@ class VOCDataset(Dataset):
                torch.tensor(labels, dtype=torch.int64)
 
 
+    def _build_cache(self):
+        for i in self.image_ids:
+            self.__getitem__(i)
+        self.is_cached = True
+
     def __len__(self):
         return len(self.image_ids)
 
     def __getitem__(self, idx: int):
+        if(self.use_cache and self.is_cached):
+            return self.cached_data[idx]
+
         img_id = self.image_ids[idx]
         img_path = self.img_dir / f"{img_id}.jpg"
         ann_path = self.ann_dir / f"{img_id}.xml"
@@ -137,5 +153,8 @@ class VOCDataset(Dataset):
 
         boxes, labels = self._parse_annotation(ann_path)
         target = {"boxes": boxes, "labels": labels}
+        
+        if(self.use_cache):
+            self.cached_data.append((img, target))
 
         return img, target

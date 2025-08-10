@@ -33,6 +33,7 @@ class Config:
         
         #lr
         config = Config.parse_double_key(config, 'lr', 'initial_lr', const.LR)
+        config = Config.parse_double_key(config, 'lr', 'min_lr', const.MIN_LR)
         
         #anchors
         config = Config.parse_double_key(config, 'anchors', 'variances', const.VARIANCES)
