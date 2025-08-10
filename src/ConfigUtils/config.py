@@ -37,6 +37,7 @@ class Config:
         #anchors
         config = Config.parse_double_key(config, 'anchors', 'variances', const.VARIANCES)
         config = Config.parse_double_key(config, 'anchors', 'iou_threshold', const.IOU_THRESHOLD)
+        config = Config.parse_double_key(config, 'anchors', 'post_iou_threshold', const.IOU_THRESHOLD)
         config = Config.parse_double_key(config, 'anchors', 'confidence', const.CONFIDENCE)
         config = Config.parse_double_key(config, 'anchors', 'top_k_classes', const.TOP_K_CLASSES)
         

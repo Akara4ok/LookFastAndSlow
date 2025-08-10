@@ -1,13 +1,14 @@
 ObjectDetector:
   seed: 42
   data:
-    path: 'Data/'
     test_percent: 0.2
   train:
     epochs: 100
-    batch_size: 8
+    batch_size: 32
     # save_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/saved_model/ #colab
     # tensorboard_path: /content/gdrive/MyDrive/NeuraSens/data/Artifacts/tensor_board/ #colab
+  anchors:
+    iou_threshold: 0.45
   model:
     path: "Model/voc.weights.h5"
   lr:

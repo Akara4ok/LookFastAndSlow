@@ -6,12 +6,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def hard_negative_mining(bg_loss: torch.Tensor,
-                          labels: torch.Tensor,
-                          neg_pos_ratio: int) -> torch.Tensor:
+                         labels: torch.Tensor,
+                         neg_pos_ratio: int) -> torch.Tensor:
     pos_mask = labels > 0
     num_pos = pos_mask.long().sum(dim=1, keepdim=True)
-    num_neg = num_pos * neg_pos_ratio
+    # clamp negatives to a sane range
+    num_neg = (num_pos * neg_pos_ratio).clamp(min=1, max=labels.size(1) - 1)
 
+    # .copy() is wrong for tensors → use clone()
+    bg_loss = bg_loss.clone()
     bg_loss[pos_mask] = -math.inf
 
     _, idx = bg_loss.sort(dim=1, descending=True)
@@ -32,19 +35,21 @@ class SSDLoss(nn.Module):
                 gt_labels: torch.Tensor        # (B, N)  labels
                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         
-        num_classes = pred_logits.size(2)
         with torch.no_grad():
             loss = -F.log_softmax(pred_logits, dim=2)[:, :, 0]
             mask = hard_negative_mining(loss, gt_labels, self.neg_pos_ratio)
-        
-        pred_logits = pred_logits[mask, :]
-        
-        cls_loss = F.cross_entropy(pred_logits.reshape(-1, num_classes), gt_labels[mask], reduction='sum')
+
+        if mask.any():
+            cls_loss = F.cross_entropy(pred_logits[mask], gt_labels[mask], reduction='sum')
+        else:
+            cls_loss = pred_logits.new_tensor(0.)
+
         pos_mask = gt_labels > 0
-        pred_deltas = pred_deltas[pos_mask, :].reshape(-1, 4)
-        gt_deltas = gt_deltas[pos_mask, :].reshape(-1, 4)
-        
-        loc_loss = F.smooth_l1_loss(pred_deltas, gt_deltas, reduction='sum')
-        num_pos = max(gt_deltas.size(0), 1)
+        if pos_mask.any():
+            loc_loss = F.smooth_l1_loss(pred_deltas[pos_mask], gt_deltas[pos_mask], reduction='sum')
+            num_pos = int(pos_mask.sum())
+        else:
+            loc_loss = pred_deltas.new_tensor(0.)
+            num_pos  = 1
 
         return loc_loss/num_pos, cls_loss/num_pos

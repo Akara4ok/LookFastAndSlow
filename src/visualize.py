@@ -13,8 +13,8 @@ def visulize(image: Image, detection_result: dict, label_map: list[str]):
     ax = plt.gca()
     
     for i in range(detection_result['num_detections'].numpy()[0]):
-        # if scores[i] < 0.3:
-        #     continue
+        if scores[i] < 0.3:
+            continue
         box = boxes[i]
         cls = classes[i]
         label = label_map[cls]

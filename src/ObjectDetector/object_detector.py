@@ -12,6 +12,7 @@ from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
 from ObjectDetector.loss import SSDLoss
 from ObjectDetector.postprocessing import PostProcessor
 from ObjectDetector.map import MeanAveragePrecision
+from Dataset.cached_dataset import CachedDataLoader
 
 class ObjectDetector:
     def __init__(self, labels: List[str], config: Dict, specs: List[AnchorSpec], device: torch.device | str | None = None):
@@ -28,14 +29,14 @@ class ObjectDetector:
 
         self.post = PostProcessor(self.anchors,
                                   conf_thresh=a_cfg["confidence"],
-                                  iou_thresh=a_cfg["iou_threshold"],
+                                  iou_thresh=a_cfg["post_iou_threshold"],
                                   top_k=a_cfg["top_k_classes"])
 
         self.criterion = SSDLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(),
-                                          lr=self.cfg["lr"]["initial_lr"])
+                                          lr=self.cfg["lr"]["initial_lr"], weight_decay=5e-4)
         self.writer = SummaryWriter(self.cfg["train"]["tensorboard_path"])
-        self.metric = MeanAveragePrecision(num_classes=len(self.labels))
+        self.metric = MeanAveragePrecision(num_classes=len(self.labels), device=self.device)
 
     def check_dims(self):
         n_anchors = self.anchors.corner_anchors.size(0)
@@ -52,9 +53,9 @@ class ObjectDetector:
         boxes  = target["boxes"].to(self.device)
         labels = target["labels"].to(self.device)
 
-        loc_t, labels = self.anchors.match(boxes, labels)
+        loc_t, labels = self.anchors.match(boxes, labels, self.cfg["anchors"]["iou_threshold"])
 
-        return img.to(self.device), labels, loc_t
+        return img.to(self.device), labels.to(self.device), loc_t.to(self.device)
 
     def _collate(self, batch: torch.Tensor):
         imgs, cls_t, loc_t, raw = [], [], [], []
@@ -65,7 +66,7 @@ class ObjectDetector:
             loc_t.append(l)
             raw.append(tgt)
 
-        return (torch.stack(imgs), torch.stack(cls_t), torch.stack(loc_t), raw)
+        return (torch.stack(imgs).to(self.device), torch.stack(cls_t).to(self.device), torch.stack(loc_t).to(self.device), raw)
 
     def _split_datasets(self, full_ds: Dataset, test_ratio: float):
         test_len = int(len(full_ds) * test_ratio)
@@ -73,29 +74,36 @@ class ObjectDetector:
         return random_split(full_ds, [train_len, test_len])
 
     def train(self, ds):
+        logging.info("Training started")
         ds_train, ds_val = self._split_datasets(ds, self.cfg["data"]["test_percent"])
 
         dl_train = DataLoader(ds_train,
                               batch_size=self.cfg["train"]["batch_size"],
                               shuffle=True,
                               collate_fn=self._collate,
-                              pin_memory=True, drop_last=True)
+                              drop_last=True)
+        dl_train = CachedDataLoader(dl_train)
 
         dl_val   = DataLoader(ds_val,
                               batch_size=self.cfg["train"]["batch_size"],
                               shuffle=False,
                               num_workers=0,
                               collate_fn=self._collate,
-                              pin_memory=True, drop_last=True)
+                              drop_last=False)
+        dl_val = CachedDataLoader(dl_val)
 
         best_val = float("inf")
         ckpt_dir = Path(self.cfg["model"]["path"]).expanduser().parent
         ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+        best_map = -1.0
+
         for epoch in range(self.cfg["train"]["epochs"]):
+            compute_metric = (epoch % 5 == 0)
+            
             t0 = time.time()
-            train_loss, train_loc_loss, train_cls_loss, train_map = self._run_epoch(dl_train, True)
-            val_loss, val_loc_loss, val_cls_loss, val_map = self._run_epoch(dl_val, False)
+            train_loss, train_loc_loss, train_cls_loss, train_map = self._run_epoch(dl_train, True, compute_metric)
+            val_loss, val_loc_loss, val_cls_loss, val_map = self._run_epoch(dl_val, False, True)
             dt = time.time() - t0
 
             self.writer.add_scalar("loss/train", train_loss, epoch)
@@ -108,16 +116,20 @@ class ObjectDetector:
             self.writer.add_scalar("loss/val_map", val_map, epoch)
 
             logging.info(f"Epoch {epoch:03d} time {dt:.1f}s")
-            logging.info(f"train {train_loss:.4f} loc {train_loc_loss:.4f} cls {train_cls_loss:.4f} map {train_map:.4f}")
+
+            log_metric = f"train {train_loss:.4f} loc {train_loc_loss:.4f} cls {train_cls_loss:.4f}"
+            if(compute_metric):
+                log_metric += f" map {train_map:.4f}"
+            logging.info(log_metric)
             logging.info(f"val {val_loss:.4f} loc {val_loc_loss:.4f} cls {val_cls_loss:.4f} map {val_map:.4f}")
             logging.info(f"===================")
 
-            if val_loss < best_val:
-                best_val = val_loss
+            if val_map > best_map:
+                best_map = val_map
                 torch.save(self.model.state_dict(), self.cfg["model"]["path"])
                 logging.info(f"  ↳ new best, saved to {self.cfg['model']['path']}")
 
-    def _run_epoch(self, loader: DataLoader, train: bool) -> tuple:
+    def _run_epoch(self, loader: DataLoader, train: bool, compute_metric: bool) -> tuple:
         if train:
             self.model.train()
         else:
@@ -134,20 +146,19 @@ class ObjectDetector:
                 loc_gt = loc_gt.to(self.device)
 
                 loc_p, cls_p = self.model(imgs)
-
                 loc_loss, cls_loss = self.criterion(loc_p, cls_p, loc_gt, cls_gt)
                 loss = loc_loss + cls_loss
-                
-                preds_batch = []
-                for cls_i, loc_i in zip(cls_p, loc_p):
-                    preds_batch.append(self.post.ssd_postprocess(cls_i, loc_i))
-                self.metric.update(preds_batch, raw)
-                
+
+                if(compute_metric):
+                    preds_batch = []
+                    for cls_i, loc_i in zip(cls_p, loc_p):
+                        preds_batch.append(self.post.ssd_postprocess(cls_i, loc_i))
+                    self.metric.update(preds_batch, raw)
+
                 if train:
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
-
 
                 total_loss += loss.item()
                 total_loc += loc_loss.item()
@@ -155,7 +166,10 @@ class ObjectDetector:
                 
                 n_batches += 1
 
-        res = self.metric.compute()
+        res = {"mAP": 0}
+        if(compute_metric):
+            res = self.metric.compute()
+        
         val_mAP = res["mAP"]
         
         return (total_loss / n_batches, total_loc / n_batches, total_cls / n_batches, val_mAP) 

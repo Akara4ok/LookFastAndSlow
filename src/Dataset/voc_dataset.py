@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 import xml.etree.ElementTree as ET
-import torchvision.transforms.functional as TF
+from torchvision import transforms
 
 class VOCDataset(Dataset):
     _URLS = {
@@ -53,6 +53,13 @@ class VOCDataset(Dataset):
         self.ann_dir = self.root / f"VOC{self.year}" / "Annotations"
 
         self.class_to_idx = {name: i + 1 for i, name in enumerate(self.VOC_CLASSES)}
+        
+        self.transform = transforms.Compose([
+            transforms.Resize((self.img_size, self.img_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std =[0.229, 0.224, 0.225]),
+        ])
 
     def _download_if_needed(self):
         needed_keys = ["trainval"] if self.split != "test" else ["test"]
@@ -111,7 +118,7 @@ class VOCDataset(Dataset):
             ymin = float(bbox.find("ymin").text) / h
             xmax = float(bbox.find("xmax").text) / w
             ymax = float(bbox.find("ymax").text) / h
-            boxes.append([ymin, xmin, ymax, xmax])
+            boxes.append([xmin, ymin, xmax, ymax])
             labels.append(self.class_to_idx[name])
 
         return torch.tensor(boxes, dtype=torch.float32), \
@@ -126,9 +133,7 @@ class VOCDataset(Dataset):
         img_path = self.img_dir / f"{img_id}.jpg"
         ann_path = self.ann_dir / f"{img_id}.xml"
 
-        img = Image.open(img_path).convert("RGB")
-        img = TF.resize(img, (self.img_size, self.img_size))
-        img = TF.to_tensor(img)
+        img = self.transform(Image.open(img_path).convert("RGB"))
 
         boxes, labels = self._parse_annotation(ann_path)
         target = {"boxes": boxes, "labels": labels}

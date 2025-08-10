@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
+import copy
 
 class InvertedResidualBlock(nn.Module):
     def __init__(self, input_size, output_size, stride, expand):
@@ -47,10 +48,10 @@ class LiteMobileNetBackbone(nn.Module):
             InvertedResidualBlock(256, 64, 2, 0.25)
         ])
         
-        self.block13_expand = nn.Sequential(
+        self.block13_expand = copy.deepcopy(nn.Sequential(
             self.features[13].conv[0],
             self.features[13].conv[1]
-        )
+        ))
         
     def forward(self, x):
         features = []
