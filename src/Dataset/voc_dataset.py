@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 import xml.etree.ElementTree as ET
-from torchvision import transforms
+import numpy as np
 
 class VOCDataset(Dataset):
     _URLS = {
@@ -54,13 +54,6 @@ class VOCDataset(Dataset):
         self.ann_dir = self.root / f"VOC{self.year}" / "Annotations"
 
         self.class_to_idx = {name: i + 1 for i, name in enumerate(self.VOC_CLASSES)}
-        
-        self.transform = transforms.Compose([
-            transforms.Resize((self.img_size, self.img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                std =[0.229, 0.224, 0.225]),
-        ])
         
         self.use_cache = use_cache
         self.is_cached = False
@@ -122,19 +115,18 @@ class VOCDataset(Dataset):
                 continue
 
             bbox = obj.find("bndbox")
-            xmin = float(bbox.find("xmin").text) / w
-            ymin = float(bbox.find("ymin").text) / h
-            xmax = float(bbox.find("xmax").text) / w
-            ymax = float(bbox.find("ymax").text) / h
+            xmin = float(bbox.find("xmin").text)
+            ymin = float(bbox.find("ymin").text)
+            xmax = float(bbox.find("xmax").text)
+            ymax = float(bbox.find("ymax").text)
             boxes.append([xmin, ymin, xmax, ymax])
             labels.append(self.class_to_idx[name])
 
-        return torch.tensor(boxes, dtype=torch.float32), \
-               torch.tensor(labels, dtype=torch.int64)
+        return np.array(boxes), np.array(labels)
 
 
     def _build_cache(self):
-        for i in self.image_ids:
+        for i in range(len(self.image_ids)):
             self.__getitem__(i)
         self.is_cached = True
 
@@ -149,7 +141,7 @@ class VOCDataset(Dataset):
         img_path = self.img_dir / f"{img_id}.jpg"
         ann_path = self.ann_dir / f"{img_id}.xml"
 
-        img = self.transform(Image.open(img_path).convert("RGB"))
+        img = np.array(Image.open(img_path).convert("RGB")).astype(np.float32) / 255
 
         boxes, labels = self._parse_annotation(ann_path)
         target = {"boxes": boxes, "labels": labels}

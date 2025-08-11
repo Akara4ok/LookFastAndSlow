@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
+import numpy as np
 from PIL import Image
 
 
@@ -19,10 +19,6 @@ class XMLStarDataset(Dataset):
         self.samples, self.label_map = self._scan_dirs()
         self.labels = [name for name, _ in sorted(self.label_map.items(),
                                                   key=lambda p: p[1])]
-        self.transform = transforms.Compose([
-            transforms.Resize((img_size, img_size)),
-            transforms.ToTensor()
-        ])
 
     @staticmethod
     def _parse_xml(xml_path: str) -> Tuple[str, List[List[float]], List[str]]:
@@ -31,8 +27,6 @@ class XMLStarDataset(Dataset):
 
         filename = root.find("filename").text
         size = root.find("size")
-        w = int(size.find("width").text)
-        h = int(size.find("height").text)
 
         boxes = []
         labels = []
@@ -41,10 +35,10 @@ class XMLStarDataset(Dataset):
             labels.append(obj.find("name").text)
 
             bbox = obj.find("bndbox")
-            xmin = float(bbox.find("xmin").text) / w
-            ymin = float(bbox.find("ymin").text) / h
-            xmax = float(bbox.find("xmax").text) / w
-            ymax = float(bbox.find("ymax").text) / h
+            xmin = float(bbox.find("xmin").text)
+            ymin = float(bbox.find("ymin").text)
+            xmax = float(bbox.find("xmax").text)
+            ymax = float(bbox.find("ymax").text)
             boxes.append([xmin, ymin, xmax, ymax])
 
         return filename, boxes, labels
@@ -84,11 +78,10 @@ class XMLStarDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.samples[idx]
 
-        img = Image.open(sample["image_path"]).convert("RGB")
-        img = self.transform(img)
+        img = np.array(Image.open(sample["image_path"]).convert("RGB")).astype(np.float32) / 255
 
-        boxes  = torch.tensor(sample["boxes"], dtype=torch.float32)
-        labels = torch.tensor(sample["labels"], dtype=torch.int64)
+        boxes  = np.array(sample["boxes"])
+        labels = np.array(sample["labels"])
 
         target = {"boxes": boxes, "labels": labels}
         return img, target

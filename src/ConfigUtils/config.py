@@ -25,6 +25,7 @@ class Config:
         config = Config.parse_double_key(config, 'train', 'tensorboard_path', const.LOGS_PATH)
         os.makedirs(config['train']['tensorboard_path'], exist_ok=True)
         config = Config.parse_double_key(config, 'train', 'batch_size', const.BATCH_SIZE)
+        config = Config.parse_double_key(config, 'train', 'augmentation', const.AUGMENTATION)
         
         #model
         config = Config.parse_double_key(config, 'model', 'path', const.MODEL_PATH)

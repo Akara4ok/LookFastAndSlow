@@ -7,6 +7,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
+from Dataset.train_dataset import TrainDataset
+from Dataset.test_dataset import TestDataset
 from ObjectDetector.Models.ssd_lite import SSDLite
 from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
 from ObjectDetector.loss import SSDLoss
@@ -40,7 +42,6 @@ class ObjectDetector:
         
         self.scheduler: CosineAnnealingLR = None
         min_lr = self.cfg["lr"]["min_lr"]
-        print(f"!!!!{min_lr}!!!!")
         if(min_lr is not None):
             self.scheduler = CosineAnnealingLR(
                 self.optimizer,
@@ -82,7 +83,12 @@ class ObjectDetector:
     def _split_datasets(self, full_ds: Dataset, test_ratio: float):
         test_len = int(len(full_ds) * test_ratio)
         train_len = len(full_ds) - test_len
-        return random_split(full_ds, [train_len, test_len])
+        img_size = self.cfg["model"]["img_size"]
+        
+        train_ds, val_ds = random_split(full_ds, [train_len, test_len])
+        if(self.cfg["train"]["augmentation"]):
+            return TrainDataset(train_ds, img_size), TestDataset(val_ds, img_size)
+        return TestDataset(train_ds, img_size), TestDataset(val_ds, img_size)
 
     def train(self, ds):
         logging.info("Training started")

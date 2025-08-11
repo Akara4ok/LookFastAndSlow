@@ -20,7 +20,6 @@ cfg = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 cfg['model']['path'] = "Model/star.weights.h5"
 cfg['anchors']['confidence'] = 0.6
 cfg['anchors']['top_k_classes'] = 200
-cfg['lr']['min_lr'] = 1e-5
 
 labels = ["None", "Star"]                       # background idx 0 + 1 class
 detector = ObjectDetector(labels, cfg, specs)

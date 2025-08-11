@@ -6,23 +6,24 @@ from ConfigUtils.config import Config
 from pathlib import Path
 import logging
 from Dataset.xml_star_dataset import XMLStarDataset
+from Dataset.train_dataset import TrainDataset
+from Dataset.voc_dataset import VOCDataset
 from ObjectDetector.object_detector import ObjectDetector
 from ObjectDetector.Anchors.mobilenet_anchors import specs
 
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/star.weights.h5"
+config['model']['path'] = "Model/voc.weights.h5"
 config['train']['epochs'] = 100
-config['data']['path'] = "Data/"
+config['data']['path'] = "Data/VOCDevKit"
 config['anchors']['iou_threshold'] = 0.45
-config['anchors']['post_iou_threshold'] = 0.45
 config['anchors']['confidence'] = 0.5
 config['anchors']['top_k_classes'] = 200
-config['lr']['min_lr'] = 1e-5
-config['train']['augmentation'] = False
 
-dataset = XMLStarDataset(config['data']['path'], config['model']['img_size'])
+# train_ds = VOCDataset("Data/VOCDevKit", "2007", "trainval", 300)
+train_ds = TrainDataset(VOCDataset("Data/VOCDevKit", "2007", "trainval", 300))
 
-objectDetector = ObjectDetector(['None', 'Star'], config, specs)
-objectDetector.train(dataset)
+for img, tgt in train_ds:
+    print(img)
+    break

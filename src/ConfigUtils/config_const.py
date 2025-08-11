@@ -18,6 +18,7 @@ LOGS_PATH = "Logs/"
 SEED = 42
 EPOCHS = 30
 BATCH_SIZE = 8
+AUGMENTATION = True
 
 #lr
 LR = 0.0001
