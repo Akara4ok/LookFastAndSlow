@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 cfg = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 cfg['model']['path'] = "Model/voc.weights.h5"
 cfg['anchors']['post_iou_threshold'] = 0.2
-cfg['anchors']['confidence'] = 0.4
+cfg['anchors']['confidence'] = 0.5
 cfg['anchors']['top_k_classes'] = 200
 
 labels = [ "background",
@@ -34,9 +34,8 @@ detector = ObjectDetector(labels, cfg, specs)
 
 detector.load_weights(cfg["model"]["path"])
 
-img_path = Path("Data/voc_test/17.jpg")
+img_path = Path("Data/voc_test/7.jpg")
 img      = Image.open(img_path).convert("RGB")           # PIL Image
-img = img.resize((300, 300))
 
 transform = transforms.Compose([
             transforms.Resize((300, 300)),
@@ -50,4 +49,4 @@ prediction = detector.predict(img_t)                     # dict with boxes …
 print(prediction)
 
 # 5) visualise -------------------------------------------------------
-visulize(img, prediction, labels)                        # same helper
+visulize(img_t.permute(1, 2, 0), prediction, labels)                        # same helper

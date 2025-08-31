@@ -17,10 +17,6 @@ class PostProcessor:
         self.top_k = top_k
 
     def ssd_postprocess(self, cls_logits: torch.Tensor, pred_loc: torch.Tensor) -> Dict[str, torch.Tensor]:
-        if(cls_logits.shape[0] == 1 and pred_loc.shape[0] == 1):
-            cls_logits = cls_logits.squeeze()
-            pred_loc = pred_loc.squeeze()
-        
         scores = F.softmax(cls_logits, dim=-1)
         variances = self.anchors.variances
         boxes = Anchors.decode_boxes(pred_loc, self.anchors.center_anchors, variances[:2], variances[2:])
@@ -49,7 +45,6 @@ class PostProcessor:
                                           c,
                                           dtype=torch.int32,
                                           device=cls_boxes.device))
-
         if not all_boxes:
             empty = torch.empty((0, 4), device=boxes.device)
             return dict(boxes=empty,

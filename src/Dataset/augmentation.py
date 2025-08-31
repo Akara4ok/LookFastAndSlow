@@ -145,8 +145,7 @@ class Expand(object):
         img = expand_image
 
         bboxes = tgt["boxes"].copy()
-        bboxes[:, :2] += (int(left), int(top))
-        bboxes[:, 2:] += (int(left), int(top))
+        bboxes[:, :] += (int(left), int(top), int(left), int(top))
         tgt["boxes"] = bboxes
 
         return img, tgt
@@ -182,7 +181,6 @@ class PhotometricDistort():
         else:
             distort = Compose(self.transform[1:])
         img, tgt = distort(img, tgt)
-        img = img / 255
         return self.light(img, tgt)
 
 class RandomSampleCrop():
@@ -255,6 +253,7 @@ class ResizeNormalize():
         
     def __call__(self, img: np.ndarray, tgt: dict):
         img, tgt = ToNormalizedCoords()(img, tgt)
+        img = (img).astype(np.uint8)
         img = transforms.ToTensor()(img)
         img = transforms.Resize((self.size, self.size))(img)
         img = transforms.Normalize(mean=[0.485, 0.456, 0.406],

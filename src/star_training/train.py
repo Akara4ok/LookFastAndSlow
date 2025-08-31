@@ -17,10 +17,10 @@ config['train']['epochs'] = 100
 config['data']['path'] = "Data/"
 config['anchors']['iou_threshold'] = 0.45
 config['anchors']['post_iou_threshold'] = 0.45
-config['anchors']['confidence'] = 0.5
+config['anchors']['confidence'] = 0.05
 config['anchors']['top_k_classes'] = 200
 config['lr']['min_lr'] = 1e-5
-config['train']['augmentation'] = False
+config['train']['augmentation'] = True
 
 dataset = XMLStarDataset(config['data']['path'], config['model']['img_size'])
 

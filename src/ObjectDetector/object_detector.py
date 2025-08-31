@@ -195,6 +195,47 @@ class ObjectDetector:
 
     def load_weights(self, path: str):
         self.model.load_state_dict(torch.load(path, map_location=self.device))
+        
+    def test(self, ds: Dataset, count: int) -> float:
+        logging.info("Testing started")
+        ds = TestDataset(ds, self.cfg["model"]["img_size"])
+        dl_test   = DataLoader(ds,
+                              batch_size=self.cfg["train"]["batch_size"],
+                              shuffle=False,
+                              num_workers=0,
+                              collate_fn=self._collate,
+                              drop_last=False)
+
+        test_map = self._test_model(dl_test, count)
+        return test_map
+                
+    def _test_model(self, dl_test: DataLoader, count: int) -> float:
+        self.model.eval()
+
+        self.metric.reset()
+
+        current = 0
+
+        with torch.set_grad_enabled(False):
+            for imgs, cls_gt, loc_gt, raw in dl_test:
+                imgs  = imgs.to(self.device)
+                cls_gt = cls_gt.to(self.device)
+                loc_gt = loc_gt.to(self.device)
+
+                loc_p, cls_p = self.model(imgs)
+
+                preds_batch = []
+                for cls_i, loc_i in zip(cls_p, loc_p):
+                    preds_batch.append(self.post.ssd_postprocess(cls_i, loc_i))
+                self.metric.update(preds_batch, raw)
+                
+                current += self.cfg["train"]["batch_size"]
+                if(current >= count):
+                    break
+
+        res = self.metric.compute()
+        
+        return  res["mAP"]
 
     def predict(self, img: torch.Tensor) -> Dict[str, torch.Tensor]:
         if img.dim() == 3:
@@ -204,6 +245,6 @@ class ObjectDetector:
         self.model.eval()
         with torch.no_grad():
             loc_p, cls_p = self.model(img)
-
-        result = self.post.ssd_postprocess(cls_p.cpu(), loc_p.cpu())
+            
+        result = self.post.ssd_postprocess(cls_p.squeeze(), loc_p.squeeze())
         return result

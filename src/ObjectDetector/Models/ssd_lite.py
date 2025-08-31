@@ -20,3 +20,4 @@ class SSDLite(nn.Module):
         feats = self.backbone(x)
         locs, confs = self.head(feats)
         return locs, confs
+    

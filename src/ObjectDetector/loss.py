@@ -10,10 +10,8 @@ def hard_negative_mining(bg_loss: torch.Tensor,
                          neg_pos_ratio: int) -> torch.Tensor:
     pos_mask = labels > 0
     num_pos = pos_mask.long().sum(dim=1, keepdim=True)
-    # clamp negatives to a sane range
     num_neg = (num_pos * neg_pos_ratio).clamp(min=1, max=labels.size(1) - 1)
 
-    # .copy() is wrong for tensors → use clone()
     bg_loss = bg_loss.clone()
     bg_loss[pos_mask] = -math.inf
 

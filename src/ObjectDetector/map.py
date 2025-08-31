@@ -76,7 +76,6 @@ class MeanAveragePrecision:
                 total_gt += mask.sum()
 
             if total_gt == 0:
-                aps.append(0.0)
                 continue
 
             if len(det_cls) == 0:
@@ -107,10 +106,23 @@ class MeanAveragePrecision:
             
             recalls = tp_cum / total_gt
             precis = tp_cum / (tp_cum + fp_cum + 1e-6)
-            aps.append(_ap_from_pr(recalls, precis))
-
+            ap = _ap_from_pr(recalls, precis)
+            aps.append(ap)
+            TP = int(tp.sum()) if len(aps) else 0
+            FP = int(fp.sum()) if len(aps) else 0
+            # print("================")
+            # print("Class", cls)
+            # print("GT", total_gt)
+            # print("TP", TP)
+            # print("FP", int(fp.sum()) if len(aps) else 0)
+            # print("FN", max(total_gt - TP, 0))
+            # print("Recall", TP / total_gt if total_gt > 0 else 0.0)
+            # print("Precision ", TP / (TP + FP) if (TP + FP) > 0 else 0.0)
+            # print("ap", ap)
+            
         mAP = float(np.mean(aps)) if aps else 0.0
         out = {"mAP": mAP}
         for c, ap in enumerate(aps, 1):
             out[f"AP_{c}"] = ap
+            # qwe
         return out

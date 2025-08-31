@@ -105,9 +105,6 @@ class VOCDataset(Dataset):
         tree = ET.parse(xml_path)
         root = tree.getroot()
 
-        w = int(root.find("size/width").text)
-        h = int(root.find("size/height").text)
-
         boxes, labels = [], []
         for obj in root.findall("object"):
             name = obj.find("name").text.lower().strip()
@@ -135,18 +132,21 @@ class VOCDataset(Dataset):
 
     def __getitem__(self, idx: int):
         if(self.use_cache and self.is_cached):
-            return self.cached_data[idx]
+            img, tgt = self.cached_data[idx]
+            return img.copy(), {"boxes": tgt["boxes"].copy(), "labels": tgt["labels"].copy()}
 
         img_id = self.image_ids[idx]
         img_path = self.img_dir / f"{img_id}.jpg"
         ann_path = self.ann_dir / f"{img_id}.xml"
 
-        img = np.array(Image.open(img_path).convert("RGB")).astype(np.float32) / 255
+        img = np.array(Image.open(img_path).convert("RGB")).astype(np.float32)
 
         boxes, labels = self._parse_annotation(ann_path)
         target = {"boxes": boxes, "labels": labels}
         
         if(self.use_cache):
-            self.cached_data.append((img, target))
+            self.cached_data.append((img.copy(),
+                             {"boxes": target["boxes"].copy(),
+                              "labels": target["labels"].copy()}))
 
         return img, target
