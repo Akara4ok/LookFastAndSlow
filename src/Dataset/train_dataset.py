@@ -8,7 +8,7 @@ class TrainDataset(Dataset):
         self.dataset = dataset
         self.transforms = Compose([
             PhotometricDistort(),
-            Expand([0.485, 0.456, 0.406]),
+            Expand([128, 128, 128]),
             RandomSampleCrop(),
             RandomMirror(),
             ResizeNormalize(img_size)
