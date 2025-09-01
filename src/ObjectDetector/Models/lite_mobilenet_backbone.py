@@ -4,7 +4,7 @@ from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 import copy
 
 class InvertedResidualBlock(nn.Module):
-    def __init__(self, input_size, output_size, stride, expand):
+    def __init__(self, input_size: int, output_size: int, stride: int, expand: int):
         super().__init__()
         hidden = int(round(input_size * expand))
         self.residual = stride == 1 and input_size == output_size
@@ -26,7 +26,7 @@ class InvertedResidualBlock(nn.Module):
             ]
         self.conv = nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.conv(x)
         if self.residual:
             out = x + out
@@ -34,7 +34,7 @@ class InvertedResidualBlock(nn.Module):
 
 
 class LiteMobileNetBackbone(nn.Module):
-    def __init__(self, input_size : int  = 300):
+    def __init__(self, input_size: int = 300):
         super().__init__()
         self.input_size = input_size
 
@@ -53,7 +53,7 @@ class LiteMobileNetBackbone(nn.Module):
             self.features[13].conv[1]
         ))
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = []
         for i in range(13):
             x = self.features[i](x)
@@ -72,3 +72,15 @@ class LiteMobileNetBackbone(nn.Module):
             features.append(x)
 
         return features
+    
+class MobileNetV2Phase1(nn.Module):
+    def __init__(self, width_mult=1.0, out_channels=256):
+        super().__init__()
+        base = mobilenet_v2(weights=None, width_mult=width_mult)
+        self.features = base.features
+        self.proj = nn.Conv2d(base.last_channel, out_channels, kernel_size=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        f = self.features(x)
+        f = self.proj(f)
+        return f

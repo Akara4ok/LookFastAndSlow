@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import torch
 from ObjectDetector.Models.conv_lstm_cell import ConvLSTMCell
 from ObjectDetector.Models.conv_lstm import ConvLSTM
