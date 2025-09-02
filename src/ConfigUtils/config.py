@@ -31,6 +31,10 @@ class Config:
         config = Config.parse_double_key(config, 'model', 'path', const.MODEL_PATH)
         os.makedirs(os.path.dirname(config['model']['path']), exist_ok=True)
         config = Config.parse_double_key(config, 'model', 'img_size', const.IMG_SIZE)
+        config = Config.parse_double_key(config, 'model', 'fast_width', const.FAST_WIDTH)
+        config = Config.parse_double_key(config, 'model', 'slow_width', const.SLOW_WIDTH)
+        config = Config.parse_double_key(config, 'model', 'backbone_out_channels', const.BACKBONE_OUT_CHANNEL)
+        config = Config.parse_double_key(config, 'model', 'lstm_out_channels', const.LSTM_OUT_CHANNEL)
         
         #lr
         config = Config.parse_double_key(config, 'lr', 'initial_lr', const.LR)

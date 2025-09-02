@@ -12,6 +12,10 @@ TEST_PERCENT = 0.2
 #model
 MODEL_PATH = "Model/model.weights.h5"
 IMG_SIZE = 300
+FAST_WIDTH = 0.5
+SLOW_WIDTH = 1.0
+BACKBONE_OUT_CHANNEL = 256
+LSTM_OUT_CHANNEL = 128
 
 #train
 LOGS_PATH = "Logs/"

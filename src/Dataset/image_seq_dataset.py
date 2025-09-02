@@ -98,7 +98,7 @@ class ImageSeqDataset(Dataset):
     def _load_raw(self, idx):
         if(self.use_cache and self.is_cached):
             img, label = self.cached_data[idx]
-            return img.copy(), label.copy()
+            return img.copy(), label
         
         img, label = self.base[idx]
         return img, int(label)
@@ -111,7 +111,7 @@ class ImageSeqDataset(Dataset):
     def __getitem__(self, idx: int):            
         img, label = self._load_raw(idx)
         if(self.use_cache and not self.is_cached):
-            self.cached_data((img.copy(), label.copy()))
+            self.cached_data.append((img.copy(), label))
 
         img_t = self.transform(img)
         imgs_seq = torch.stack([img_t]*self.seq_len, dim=0)
