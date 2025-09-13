@@ -76,7 +76,7 @@ class LiteMobileNetBackbone(nn.Module):
 class MobileNetV2Phase1(nn.Module):
     def __init__(self, width_mult=1.0, out_channels=256):
         super().__init__()
-        base = mobilenet_v2(weights=None, width_mult=width_mult)
+        base = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1, width_mult=width_mult)
         self.features = base.features
         self.proj = nn.Conv2d(base.last_channel, out_channels, kernel_size=1)
 

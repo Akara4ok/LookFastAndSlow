@@ -12,6 +12,8 @@ import torch.nn.functional as F
 from ObjectDetector.Models.interleaved_classifier import InterleavedClassifier
 from ObjectDetector.loss import SSDLoss
 
+from tqdm import tqdm
+
 class Phase1Trainer:
     def __init__(self, num_classes: int, config: Dict, device: torch.device | str | None = None):
         self.cfg = config
@@ -20,7 +22,8 @@ class Phase1Trainer:
         
         model_cfg = config["model"]
         self.model = InterleavedClassifier(model_cfg["fast_width"], model_cfg["slow_width"], model_cfg["backbone_out_channels"], model_cfg["lstm_out_channels"], num_classes)
-
+        self.model = self.model.to(self.device)
+        
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=self.cfg["lr"]["initial_lr"], weight_decay=5e-4)
         self.writer = SummaryWriter(self.cfg["train"]["tensorboard_path"])
@@ -66,7 +69,7 @@ class Phase1Trainer:
             logging.info(f"val loss: {val_loss:.4f}, val acc: {val_acc:.4f}")
             logging.info(f"===================")
 
-            if val_loss > best_val:
+            if val_loss < best_val:
                 best_val = val_loss
                 torch.save(self.model.state_dict(), self.cfg["model"]["path"])
                 logging.info(f"  ↳ new best, saved to {self.cfg['model']['path']}")
@@ -79,8 +82,9 @@ class Phase1Trainer:
 
         total_loss, total_correct, total_samples = 0.0, 0, 0
         T = loader.dataset.seq_len
-        
-        for imgs_seq, labels in loader:
+
+        loop = tqdm(loader, desc="Train" if train else "Val")
+        for imgs_seq, labels in loop:
             imgs_seq = imgs_seq.to(self.device)  # (B,T,C,H,W)
             labels = labels.to(self.device)      # (B,)
 
