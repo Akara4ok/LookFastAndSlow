@@ -3,8 +3,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
-from ObjectDetector.Models.conv_lstm_cell import ConvLSTMCell
-from ObjectDetector.Models.conv_lstm import ConvLSTM
+from ObjectDetector.Models.conv_lstm import ConvLSTM, ConvLSTMCell
 
 torch.manual_seed(0)
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -15,7 +14,7 @@ HID = 16
 x_seq = torch.randn(B, T, C_in, H, W, device=device)
 
 # 1) Step API: manual unroll
-cell = ConvLSTMCell(C_in, HID, k=3, layernorm=True, peephole=True).to(device)
+cell = ConvLSTMCell(C_in, HID, k=3).to(device)
 opt1 = torch.optim.Adam(cell.parameters(), lr=1e-3)
 
 h, c = (None, None)
@@ -32,7 +31,7 @@ y_manual = torch.stack(hs, dim=1)  # (B,T,HID,H,W)
 assert y_manual.shape == (B, T, HID, H, W), "manual unroll shape mismatch"
 
 # 2) Wrapper API: should match manual when weights are the same
-wrap = ConvLSTM(C_in, HID, k=3, layernorm=True, peephole=True).to(device)
+wrap = ConvLSTM(C_in, HID, k=3).to(device)
 wrap.cell.load_state_dict(cell.state_dict())  # sync weights
 
 y_wrap, (hT, cT) = wrap(x_seq, batch_first=True)

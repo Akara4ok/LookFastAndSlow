@@ -34,15 +34,19 @@ class InvertedResidualBlock(nn.Module):
 
 
 class LiteMobileNetBackbone(nn.Module):
-    def __init__(self, input_size: int = 300):
+    def __init__(self, input_size: int = 300, width_mult: int = 1.0):
         super().__init__()
         self.input_size = input_size
 
-        mobilenet = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
+        if(width_mult == 1.0):
+            mobilenet = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
+        else:
+            mobilenet = mobilenet_v2(weights=None, width_mult=width_mult)
         self.features = mobilenet.features
 
+        self.last_channel = mobilenet.last_channel
         self.connectors = nn.ModuleList([
-            InvertedResidualBlock(1280, 512, 2, 0.20),
+            InvertedResidualBlock(self.last_channel, 512, 2, 0.20),
             InvertedResidualBlock(512, 256, 2, 0.25),
             InvertedResidualBlock(256, 256, 2, 0.50),
             InvertedResidualBlock(256, 64, 2, 0.25)
@@ -76,7 +80,10 @@ class LiteMobileNetBackbone(nn.Module):
 class MobileNetV2Phase1(nn.Module):
     def __init__(self, width_mult=1.0, out_channels=256):
         super().__init__()
-        base = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1, width_mult=width_mult)
+        if(width_mult == 1.0):
+            base = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
+        else:
+            base = mobilenet_v2(weights=None, width_mult=width_mult)
         self.features = base.features
         self.proj = nn.Conv2d(base.last_channel, out_channels, kernel_size=1)
 

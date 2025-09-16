@@ -7,7 +7,7 @@ class SSDLite(nn.Module):
     def __init__(self,
                  input_size: int,
                  num_classes: int,
-                 aspects):
+                 aspects: list[int]):
         super().__init__()
 
         self.backbone = LiteMobileNetBackbone(input_size)
