@@ -9,7 +9,7 @@ from Dataset.xml_star_dataset import XMLStarDataset
 from Dataset.train_dataset import TrainDataset
 from Dataset.test_dataset import TestDataset
 from Dataset.voc_dataset import VOCDataset
-from ObjectDetector.object_detector import ObjectDetector
+from ObjectDetector.image_object_detector import ImageObjectDetector
 from ObjectDetector.Anchors.mobilenet_anchors import specs
 from visualize import visulize          # unchanged helper
 
@@ -34,7 +34,7 @@ labels = [ "background",
     "diningtable", "dog", "horse", "motorbike", "person",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
-objectDetector = ObjectDetector(labels, config, specs)
+objectDetector = ImageObjectDetector(labels, config, specs)
 objectDetector.load_weights(config["model"]["path"])
 
 # for img, tgt in test_ds:

@@ -15,7 +15,7 @@ config['model']['path'] = "Model/phase1.weights.h5"
 config['train']['epochs'] = 100
 
 train_ds = ImageSeqDataset("Data/Cifar10", "cifar10", "train", 3, 300, True, False)
-val_ds = ImageSeqDataset("Data/Cifar10", "cifar10", "train", 3, 300, True, False)
+val_ds = ImageSeqDataset("Data/Cifar10", "cifar10", "val", 3, 300, True, False)
 
 logging.info("dataset cached")
 

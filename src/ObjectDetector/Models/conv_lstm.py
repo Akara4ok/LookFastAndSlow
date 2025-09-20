@@ -107,3 +107,38 @@ class ConvLSTM(nn.Module):
         else:
             y = torch.stack(outputs, dim=0)   # (T,B,Ch,H,W)
         return y, (h, c)
+
+class Adapter(nn.Module):
+    def __init__(self, in_chs: list[int], out_chs: list[int]):
+        super().__init__()
+        layers = []
+        for ci, co in zip(in_chs, out_chs):
+            layers.append(nn.Conv2d(ci, co, kernel_size=1, bias=False))
+        self.adapters = nn.ModuleList(layers)
+        
+    def forward(self, feats: torch.Tensor) -> list:
+        return [ad(f) for ad, f in zip(self.adapters, feats)]
+
+class MultiScaleConvLSTM(nn.Module):
+    def __init__(self, in_chs: list[int], hid_chs: list[int], k: int = 3):
+        super().__init__()
+        assert len(in_chs) == len(hid_chs)
+        self.levels = len(in_chs)
+        self.cells = nn.ModuleList([
+            ConvLSTMCell(in_ch=in_c, hid_ch=h_ch, k=k)
+            for in_c, h_ch in zip(in_chs, hid_chs)
+        ])
+
+    def init_states(self, x_feats: list[torch.Tensor]):
+        states = []
+        for cell, x in zip(self.cells, x_feats):
+            states.append(cell.init_state(x))
+        return states
+
+    def step(self, x_feats: list[torch.Tensor], states: list[tuple]) -> tuple:
+        outs, new_states = [], []
+        for x, cell, st in zip(x_feats, self.cells, states):
+            h, c = cell(x, st)
+            outs.append(h)
+            new_states.append((h, c))
+        return outs, new_states

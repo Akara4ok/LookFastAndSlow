@@ -21,7 +21,7 @@ class Phase1Trainer:
                                    ("cuda" if torch.cuda.is_available() else "cpu"))
         
         model_cfg = config["model"]
-        self.model = InterleavedClassifier(model_cfg["fast_width"], model_cfg["slow_width"], model_cfg["backbone_out_channels"], model_cfg["lstm_out_channels"], num_classes)
+        self.model = InterleavedClassifier(model_cfg["img_size"], model_cfg["fast_width"], model_cfg["slow_width"], [576, 1280, 512, 256, 256, 64], num_classes)
         self.model = self.model.to(self.device)
         
         self.optimizer = torch.optim.Adam(self.model.parameters(),

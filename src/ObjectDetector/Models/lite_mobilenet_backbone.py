@@ -76,18 +76,13 @@ class LiteMobileNetBackbone(nn.Module):
             features.append(x)
 
         return features
-    
-class MobileNetV2Phase1(nn.Module):
-    def __init__(self, width_mult=1.0, out_channels=256):
-        super().__init__()
-        if(width_mult == 1.0):
-            base = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
-        else:
-            base = mobilenet_v2(weights=None, width_mult=width_mult)
-        self.features = base.features
-        self.proj = nn.Conv2d(base.last_channel, out_channels, kernel_size=1)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        f = self.features(x)
-        f = self.proj(f)
-        return f
+def _infer_pyramid(backbone: nn.Module, img_size: int, device) -> tuple:
+    backbone = backbone.to(device)
+    backbone.eval()
+    with torch.no_grad():
+        x = torch.zeros(1, 3, img_size, img_size, device=device)
+        feats: list[torch.Tensor] = backbone(x)
+    chs = [f.shape[1] for f in feats]
+    hw  = [(f.shape[2], f.shape[3]) for f in feats]
+    return chs, hw

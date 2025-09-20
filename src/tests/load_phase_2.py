@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 from ObjectDetector.Models.fast_and_slow_ssd import LookFastSlowSSD
-from ObjectDetector.Models.phase2_loader import load_phase2_from_phase1
+from ObjectDetector.phase2_loader import load_phase2_from_phase1
 
 aspects = [
     [2, 3],
@@ -21,7 +21,7 @@ model = LookFastSlowSSD(
     num_classes= 20,
     aspects=aspects,
     img_size=300,
-    lstm_channels=[256, 256, 256, 192, 128, 96],
+    lstm_channels=[576, 1280, 512, 256, 256, 64],
     fast_width=0.5,
     lstm_kernel=3,
     run_slow_every=6

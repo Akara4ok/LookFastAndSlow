@@ -10,7 +10,7 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 
 from ConfigUtils.config import Config
-from ObjectDetector.object_detector import ObjectDetector
+from ObjectDetector.image_object_detector import ImageObjectDetector
 from visualize import visulize          # unchanged helper
 from ObjectDetector.Anchors.mobilenet_anchors import specs
 
@@ -22,7 +22,7 @@ cfg['anchors']['confidence'] = 0.6
 cfg['anchors']['top_k_classes'] = 200
 
 labels = ["None", "Star"]                       # background idx 0 + 1 class
-detector = ObjectDetector(labels, cfg, specs)
+detector = ImageObjectDetector(labels, cfg, specs)
 
 detector.load_weights(cfg["model"]["path"])
 

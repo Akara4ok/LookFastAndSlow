@@ -6,7 +6,7 @@ from ConfigUtils.config import Config
 from pathlib import Path
 import logging
 from Dataset.xml_star_dataset import XMLStarDataset
-from ObjectDetector.object_detector import ObjectDetector
+from ObjectDetector.image_object_detector import ImageObjectDetector
 from ObjectDetector.Anchors.mobilenet_anchors import specs
 
 logging.basicConfig(level=logging.INFO)
@@ -24,5 +24,5 @@ config['train']['augmentation'] = True
 
 dataset = XMLStarDataset(config['data']['path'], config['model']['img_size'])
 
-objectDetector = ObjectDetector(['None', 'Star'], config, specs)
+objectDetector = ImageObjectDetector(['None', 'Star'], config, specs)
 objectDetector.train(dataset)

@@ -21,12 +21,6 @@ class ImageSeqVideoDataset(Dataset):
         return len(self.base)
 
     def _unpack_base_sample(self, sample):
-        """
-        Normalize the base dataset output to (img, boxes, labels).
-        Expected:
-          img: np.ndarray(H,W,3) BGR
-          target: dict with "boxes" (Nx4 xyxy abs px), "labels" (N)
-        """
         if isinstance(sample, tuple) and len(sample) >= 2:
             img, target = sample[0], sample[1]
         elif isinstance(sample, dict):

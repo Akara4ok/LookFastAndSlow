@@ -16,7 +16,7 @@ from ObjectDetector.postprocessing import PostProcessor
 from ObjectDetector.map import MeanAveragePrecision
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-class ObjectDetector:
+class ImageObjectDetector:
     def __init__(self, labels: List[str], config: Dict, specs: List[AnchorSpec], device: torch.device | str | None = None):
         self.cfg = config
         self.labels = labels

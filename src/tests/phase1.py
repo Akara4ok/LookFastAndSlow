@@ -8,10 +8,9 @@ from ObjectDetector.Models.interleaved_classifier import InterleavedClassifier
 
 B,T,H,W = 8,3,300,300
 num_classes = 100
-backbone_out_channels = 256
-lstm_out_channels = 128
+lstm_channels = [576, 1280, 512, 256, 256, 64]
 
-model = InterleavedClassifier(1.0, 0.5, backbone_out_channels, lstm_out_channels, num_classes)
+model = InterleavedClassifier(300, 0.5, 1.0, lstm_channels, num_classes)
 
 # fake input
 x_seq = torch.randn(B,T,3,H,W)
@@ -32,3 +31,5 @@ print("loss:", loss.item())
 loss.backward()
 print("Backprop OK, grads nonzero:",
         any(p.grad is not None and p.grad.abs().sum()>0 for p in model.parameters()))
+
+torch.save(model.state_dict(), "phase1.weights.h5")

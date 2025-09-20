@@ -11,7 +11,7 @@ import torchvision.transforms.functional as TF
 from torchvision import transforms
 
 from ConfigUtils.config import Config
-from ObjectDetector.object_detector import ObjectDetector
+from ObjectDetector.image_object_detector import ImageObjectDetector
 from visualize import visulize          # unchanged helper
 from ObjectDetector.Anchors.mobilenet_anchors import specs
 
@@ -30,7 +30,7 @@ labels = [ "background",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]                      # background idx 0 + 1 class
 
-detector = ObjectDetector(labels, cfg, specs)
+detector = ImageObjectDetector(labels, cfg, specs)
 
 detector.load_weights(cfg["model"]["path"])
 
