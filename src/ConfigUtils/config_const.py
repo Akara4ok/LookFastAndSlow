@@ -14,6 +14,7 @@ MODEL_PATH = "Model/model.weights.h5"
 IMG_SIZE = 300
 FAST_WIDTH = 0.5
 SLOW_WIDTH = 1.0
+PRETRAIN = None
 
 #train
 LOGS_PATH = "Logs/"

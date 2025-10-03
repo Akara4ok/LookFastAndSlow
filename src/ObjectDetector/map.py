@@ -19,12 +19,15 @@ def _box_iou(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return inter / (union + 1e-6)
 
 def _ap_from_pr(recall: np.ndarray, precision: np.ndarray) -> float:
-    mrec = np.concatenate([[0.0], recall, [1.0]])
-    mpre = np.concatenate([[1.0], precision, [0.0]])
-    for i in range(mpre.size - 1, 0, -1):
-        mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
-    idx = np.where(mrec[1:] != mrec[:-1])[0]
-    return np.sum((mrec[idx + 1] - mrec[idx]) * mpre[idx + 1])
+    precision = np.concatenate([[0.0], precision, [0.0]])
+    for i in range(len(precision) - 1, 0, -1):
+        precision[i - 1] = np.maximum(precision[i - 1], precision[i])
+
+    recall = np.concatenate([[0.0], recall, [1.0]])
+    changing_points = np.where(recall[1:] != recall[:-1])[0]
+
+    areas = (recall[changing_points + 1] - recall[changing_points]) * precision[changing_points + 1]
+    return areas.sum()
 
 class MeanAveragePrecision:
     def __init__(self,
@@ -108,8 +111,8 @@ class MeanAveragePrecision:
             precis = tp_cum / (tp_cum + fp_cum + 1e-6)
             ap = _ap_from_pr(recalls, precis)
             aps.append(ap)
-            TP = int(tp.sum()) if len(aps) else 0
-            FP = int(fp.sum()) if len(aps) else 0
+            # TP = int(tp.sum()) if len(aps) else 0
+            # FP = int(fp.sum()) if len(aps) else 0
             # print("================")
             # print("Class", cls)
             # print("GT", total_gt)

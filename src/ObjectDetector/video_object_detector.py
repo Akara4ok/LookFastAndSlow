@@ -2,16 +2,19 @@ import time
 import logging
 from pathlib import Path
 
+from tqdm import tqdm
+
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader, random_split
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
 from ObjectDetector.Models.fast_and_slow_ssd import LookFastSlowSSD
 from ObjectDetector.postprocessing import PostProcessor
 from ObjectDetector.loss import SSDLoss
 from ObjectDetector.map import MeanAveragePrecision
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from ObjectDetector.phase2_loader import load_phase2_from_phase1
 
 class VideoObjectDetector:
     def __init__(self, labels: list[str], config: dict, specs: list[AnchorSpec],
@@ -24,7 +27,6 @@ class VideoObjectDetector:
         self.anchors = Anchors(specs, self.cfg["model"]["img_size"], a_cfg["variances"], device=self.device)
 
         m_cfg = self.cfg["model"]
-        ssd_channels = m_cfg.get("ssd_channels", [576, 1280, 512, 256, 256, 64])
 
         self.model = LookFastSlowSSD(
             num_classes=len(labels),
@@ -32,9 +34,12 @@ class VideoObjectDetector:
             img_size=m_cfg["img_size"],
             fast_width=m_cfg["fast_width"],
             lstm_kernel=3,
-            ssd_channels=ssd_channels,
             run_slow_every=4
         ).to(self.device)
+        
+        pretrain_path = m_cfg["pretrain"]
+        if(pretrain_path is not None):
+            self.model = load_phase2_from_phase1(self.model, pretrain_path, self.device)
 
         self.check_dims()
 
@@ -189,7 +194,8 @@ class VideoObjectDetector:
         total_loss, total_loc, total_cls, n_batches = 0.0, 0.0, 0.0, 0
 
         with torch.set_grad_enabled(train):
-            for batch in loader:
+            loop = tqdm(loader, desc="Train" if train else "Val")
+            for batch in loop:
                 if batch is None:
                     continue
 

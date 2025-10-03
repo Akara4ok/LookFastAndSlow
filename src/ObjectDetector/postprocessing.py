@@ -49,8 +49,7 @@ class PostProcessor:
             empty = torch.empty((0, 4), device=boxes.device)
             return dict(boxes=empty,
                         scores=torch.empty(0, device=boxes.device),
-                        classes=torch.empty(0, dtype=torch.int32, device=boxes.device),
-                        num_detections=torch.tensor([0], dtype=torch.int32))
+                        classes=torch.empty(0, dtype=torch.int32, device=boxes.device))
 
         boxes_cat   = torch.cat(all_boxes)
         scores_cat  = torch.cat(all_scores)
@@ -63,7 +62,63 @@ class PostProcessor:
 
         return dict(boxes=boxes_cat,
                     scores=scores_cat,
-                    classes=labels_cat,
-                    num_detections=torch.tensor([boxes_cat.size(0)],
-                                                dtype=torch.int32,
-                                                device=boxes_cat.device))
+                    classes=labels_cat)
+    
+    def simple_postprocess(self, cls_logits: torch.Tensor, pred_loc: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Повертає по 1 боксу на кожен клас (найвищий score).
+        Працює з формами:
+        - cls_logits: (N, A, C) або (A, C)
+        - pred_loc  : (N, A, 4) або (A, 4)
+        """
+
+        # ==== 1) Приводимо форми до (A, C) і (A, 4) ====
+        if cls_logits.ndim == 3:
+            # Очікуємо N=1; якщо більше — візьмемо перший елемент (або прибери .squeeze у виклику)
+            cls_logits = cls_logits[0]
+        elif cls_logits.ndim != 2:
+            raise ValueError(f"cls_logits must be (A,C) or (N,A,C), got {tuple(cls_logits.shape)}")
+
+        if pred_loc.ndim == 3:
+            pred_loc = pred_loc[0]
+        elif pred_loc.ndim != 2:
+            raise ValueError(f"pred_loc must be (A,4) or (N,A,4), got {tuple(pred_loc.shape)}")
+
+        # ==== 2) Отримуємо scores по класах ====
+        # ВАРІАНТ A: якщо в тебе softmax з background (клас 0 = BG):
+        use_softmax_with_bg = True  # <-- ПОСТАВИ False, якщо перейшов на sigmoid без BG
+        if use_softmax_with_bg:
+            scores_full = F.softmax(cls_logits, dim=-1)   # (A, C)
+            if scores_full.size(1) < 2:
+                raise ValueError("Expect at least 2 classes (background + 1).")
+            scores = scores_full[:, 1:]                   # прибираємо background -> (A, C-1)
+            label_offset = 1
+        else:
+            # ВАРІАНТ B: sigmoid без background
+            scores = cls_logits.sigmoid()                 # (A, C) — усі C це об’єктні класи
+            label_offset = 0
+
+        # ==== 3) Декодуємо бокси ====
+        variances = self.anchors.variances
+        boxes = Anchors.decode_boxes(pred_loc, self.anchors.center_anchors,
+                                    variances[:2], variances[2:])         # (A, 4) у center
+        boxes = Anchors.center_to_corner(boxes).clamp(0, 1)                 # (A, 4) у corner
+
+        # ==== 4) По одному найкращому боксу на кожен клас ====
+        # Для кожного класу знаходимо anchor з найбільшим score.
+        # scores: (A, C_eff) -> беремо max по A
+        best_scores, best_anchor_idx_per_class = scores.max(dim=0)          # (C_eff,), (C_eff,)
+        keep = best_scores > self.conf_thresh
+        if not keep.any():
+            empty = torch.empty((0, 4), device=boxes.device)
+            return dict(
+                boxes=empty,
+                scores=torch.empty(0, device=boxes.device),
+                classes=torch.empty(0, dtype=torch.int32, device=boxes.device),
+            )
+
+        chosen_boxes  = boxes[best_anchor_idx_per_class[keep]]              # (K, 4)
+        chosen_scores = best_scores[keep]                                   # (K,)
+        chosen_labels = torch.arange(scores.size(1), device=boxes.device, dtype=torch.int32)[keep] + label_offset  # (K,)
+
+        return dict(boxes=chosen_boxes, scores=chosen_scores, classes=chosen_labels)

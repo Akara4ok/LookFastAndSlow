@@ -1,6 +1,7 @@
 import os
 import sys
 import matplotlib.pyplot as plt
+import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from Dataset.voc_dataset import VOCDataset
@@ -10,6 +11,8 @@ from Dataset.map_labels_wrapper import MapLabelsWrapper
 from Dataset.mixed_seq_dataset import MixedSeqDataset
 
 import numpy as np
+
+# logging.basicConfig(level=logging.DEBUG)
 
 voc_ds = VOCDataset("Data/VOCDevKit", "2007", "trainval", 300, use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
@@ -24,7 +27,7 @@ yt_ds = YoutubeBBDataset(
 )
 yt_ds = MapLabelsWrapper(yt_ds, "ytbb")
 
-ds = MixedSeqDataset(voc_ds, yt_ds, 500, (3, 1), 20)
+ds = MixedSeqDataset(300, voc_ds, yt_ds, 500, (3, 1), 20, 10)
 # ds = voc_ds
 
 for seq, tgt in ds:
@@ -34,6 +37,8 @@ for seq, tgt in ds:
     fig, axs = plt.subplots(1, n, figsize=(12, 4))
 
     for i, img in enumerate(seq):
+        img = img.permute(1, 2, 0)
+        img = img.numpy() * 255
         img_rgb = img[..., ::-1]
         img_rgb = img_rgb.astype(np.int32)
         axs[i].imshow(img_rgb)
@@ -41,6 +46,7 @@ for seq, tgt in ds:
         axs[i].set_title("Image " + str(i))
 
     print(tgt)
+    print("=" * 10)
     plt.show()
 
 

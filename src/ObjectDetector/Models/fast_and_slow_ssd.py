@@ -84,6 +84,5 @@ class LookFastSlowSSD(nn.Module):
 
         locs_all  = torch.stack(locs_steps,  dim=1)
         confs_all = torch.stack(confs_steps, dim=1)
-        used_mask = torch.tensor(use_slow, device=locs_all.device, dtype=torch.bool)
-        return locs_all, confs_all, used_mask
+        return locs_all, confs_all
     

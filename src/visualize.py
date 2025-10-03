@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 def visulize(image: Image, detection_result: dict, label_map: list[str]):
-    boxes = detection_result['boxes'].numpy()
-    scores = detection_result['scores'].numpy()
-    classes = detection_result['classes'].numpy()
+    boxes = detection_result['boxes'].cpu().numpy()
+    scores = detection_result['scores'].cpu().numpy()
+    classes = detection_result['classes'].cpu().numpy()
 
     # Вивід
     plt.figure(figsize=(6, 6))
     plt.imshow(np.array(image))
     ax = plt.gca()
     
-    for i in range(detection_result['num_detections'].numpy()[0]):
+    for i in range(boxes.shape[0]):
         if scores[i] < 0.3:
             continue
         box = boxes[i]

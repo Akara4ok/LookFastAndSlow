@@ -33,6 +33,7 @@ class Config:
         config = Config.parse_double_key(config, 'model', 'img_size', const.IMG_SIZE)
         config = Config.parse_double_key(config, 'model', 'fast_width', const.FAST_WIDTH)
         config = Config.parse_double_key(config, 'model', 'slow_width', const.SLOW_WIDTH)
+        config = Config.parse_double_key(config, 'model', 'pretrain', const.PRETRAIN)
         
         #lr
         config = Config.parse_double_key(config, 'lr', 'initial_lr', const.LR)

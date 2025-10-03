@@ -15,6 +15,11 @@ import cv2
 import pandas as pd
 from torch.utils.data import Dataset
 
+class QuietLogger:
+    def debug(self, msg):   pass
+    def warning(self, msg): pass
+    def error(self, msg):   pass 
+
 YTBB_BASE = "https://research.google.com/youtube-bb"
 CSV_URLS = {
     "train": f"{YTBB_BASE}/yt_bb_detection_train.csv.gz",
@@ -56,6 +61,7 @@ def _download_video_ytdlp(youtube_id: str, out_dir: str, retries: int = 3) -> Op
             return p
 
     ydl_opts = {
+        "logger:": QuietLogger(),
         "outtmpl": outtmpl,
         "noplaylist": True,
         "quiet": True,
@@ -90,7 +96,6 @@ def _download_video_ytdlp(youtube_id: str, out_dir: str, retries: int = 3) -> Op
                 if fn.startswith(youtube_id + "."):
                     return os.path.join(out_dir, fn)
     except Exception as e:
-        logging.warning(f"[yt_dlp] Failed to download {youtube_id}: {e}")
         return None
 
     return None
@@ -148,7 +153,7 @@ class YoutubeBBDataset(Dataset):
             raise RuntimeError("No usable YT-BB segments found after filtering.")
         
     def _build_segments(self, csv_gz_path: str) -> List[Dict]:
-        logging.info(f"Parsing {csv_gz_path} (this can take a bit)…")
+        logging.info(f"Parsing {csv_gz_path}")
         df = pd.read_csv(csv_gz_path, compression="gzip", header=None, names=[
             "youtube_id", "timestamp_ms", "class_id", "class_name",
             "object_id", "object_presence", "xmin", "xmax", "ymin", "ymax"
@@ -177,6 +182,11 @@ class YoutubeBBDataset(Dataset):
     def __len__(self) -> int:
         return len(self.segments)
     
+    def _ensure_downloaded(self, segment_id: int):
+        seg = self.segments[segment_id]
+        youtube_id   = seg["youtube_id"]
+        return self._ensure_video(youtube_id)
+    
     def _ensure_video(self, youtube_id: str) -> Optional[str]:
         for ext in (".mp4", ".webm", ".mkv", ".mov"):
             p = os.path.join(self.video_dir, youtube_id + ext)
@@ -201,12 +211,12 @@ class YoutubeBBDataset(Dataset):
         # ------- open video -------
         video_path = self._ensure_video(youtube_id)
         if video_path is None or (not os.path.exists(video_path)):
-            return [], []
+            return None
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             cap.release()
-            return [], []
+            return None
 
         fps = float(cap.get(cv2.CAP_PROP_FPS) or 30.0)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
@@ -217,7 +227,7 @@ class YoutubeBBDataset(Dataset):
 
         if not ann_ts_sorted:
             cap.release()
-            return [], []
+            return None
         
         t0 = random.choice(ann_ts_sorted)
 
@@ -282,7 +292,7 @@ class YoutubeBBDataset(Dataset):
         cap.release()
 
         if len(frames) < T:
-            return [], []
+            return None
             
         return frames, targets
 

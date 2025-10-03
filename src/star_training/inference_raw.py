@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 
 cfg = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 cfg['model']['path'] = "Model/star.weights.h5"
-cfg['anchors']['confidence'] = 0.6
+cfg['anchors']['confidence'] = 0.01
 cfg['anchors']['top_k_classes'] = 200
 
 labels = ["None", "Star"]                       # background idx 0 + 1 class
@@ -32,7 +32,7 @@ img      = TF.resize(img, (300, 300))                    # H,W
 img_t    = TF.to_tensor(img).float()                     # (3,H,W) 0–1
 
 prediction = detector.predict(img_t)                     # dict with boxes …
-print(prediction)
+# print(prediction)
 
 # 5) visualise -------------------------------------------------------
 visulize(img, prediction, labels)                        # same helper

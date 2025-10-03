@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import torch
+import numpy as np
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
+from torchvision import transforms
 
 from Dataset.train_dataset import TrainDataset
 from Dataset.test_dataset import TestDataset
@@ -237,9 +239,14 @@ class ImageObjectDetector:
         
         return  res["mAP"]
 
-    def predict(self, img: torch.Tensor) -> Dict[str, torch.Tensor]:
-        if img.dim() == 3:
-            img = img.unsqueeze(0)
+    def predict(self, img: np.ndarray) -> Dict[str, torch.Tensor]:
+        if(isinstance(img, np.ndarray)):
+            img = transforms.ToTensor()(img)
+            img = transforms.Resize((300, 300))(img)
+            img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                    std =[0.229, 0.224, 0.225])(img)
+            
+        img = img.unsqueeze(0)
         img = img.to(self.device)
 
         self.model.eval()
@@ -247,4 +254,6 @@ class ImageObjectDetector:
             loc_p, cls_p = self.model(img)
             
         result = self.post.ssd_postprocess(cls_p.squeeze(), loc_p.squeeze())
+        # print(result)
+        # result = self.post.simple_postprocess(cls_p.squeeze(), loc_p.squeeze())
         return result

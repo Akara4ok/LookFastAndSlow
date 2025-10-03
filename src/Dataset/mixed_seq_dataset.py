@@ -1,17 +1,23 @@
+import logging
+import torch
+
 from typing import Optional, Tuple, List
 import random
-import numpy as np
 from torch.utils.data import Dataset, get_worker_info
+
+from Dataset.augmentation import ResizeNormalize
 
 class MixedSeqDataset(Dataset):
     def __init__(
         self,
+        img_size: int,
         image_seq_ds: Dataset,
         video_ds: Dataset,
         num_samples: int,
         ratio: Tuple[int, int] = (1, 1),
         retries_per_item: int = 20,
         video_index_pool_size: Optional[int] = None,
+        preload_video_pool: bool = True,
         seed: int = 42,
     ):
         assert num_samples > 0
@@ -35,6 +41,35 @@ class MixedSeqDataset(Dataset):
             self._video_indices = rng.sample(range(n_vid), k=video_index_pool_size)
 
         self._image_indices = list(range(len(self.image_seq_ds)))
+        
+        self.transform = ResizeNormalize(img_size)
+        
+        if preload_video_pool:
+            self._preload_video_pool()
+
+    def _preload_video_pool(self):
+        ok = 0
+        for i in self._video_indices:
+            try:
+                item = self.video_ds.base._ensure_downloaded(i)
+                if(item is None):
+                    logging.warning(f"[MixedSeqDataset] preload failed for video idx {i}: {e}")
+                    continue
+                ok += 1
+            except Exception as e:
+                logging.warning(f"[MixedSeqDataset] preload failed for video idx {i}: {e}")
+        logging.info(f"[MixedSeqDataset] preloaded {ok}/{len(self._video_indices)} videos in pool.")
+
+    def _to_tensors(self, frames, targets):
+        f_out: list[torch.Tensor] = []
+        t_out: list[dict[str, torch.Tensor]] = []
+        
+        for frame, target in zip(frames, targets):
+            img, tgt = self.transform(frame, target)
+            f_out.append(img)
+            t_out.append(tgt)
+            
+        return f_out, t_out
 
     def __len__(self) -> int:
         return self.num_samples
@@ -48,34 +83,28 @@ class MixedSeqDataset(Dataset):
     def _sample_image_item(self, rng: random.Random):
         for _ in range(self.retries_per_item):
             i = rng.choice(self._image_indices)
-            try:
-                item = self.image_seq_ds[i]
-                if item is None:
-                    continue
-                frames, targets = item
-                total = sum(t["labels"].size for t in targets)
-                if total == 0:
-                    continue
-                return frames, targets
-            except IndexError:
+            item = self.image_seq_ds[i]
+            if item is None:
                 continue
-        raise IndexError("Image-seq: failed to sample a valid item")
+            frames, targets = item
+            total = sum(t["labels"].size for t in targets)
+            if total == 0:
+                continue
+            return self._to_tensors(frames, targets)
+        return None
 
     def _sample_video_item(self, rng: random.Random):
         for _ in range(self.retries_per_item):
             i = rng.choice(self._video_indices)
-            try:
-                item = self.video_ds[i]
-                if item is None:
-                    continue
-                frames, targets = item
-                total = sum(t["labels"].size for t in targets)
-                if total == 0:
-                    continue
-                return frames, targets
-            except IndexError:
+            item = self.video_ds[i]
+            if item is None:
                 continue
-        raise IndexError("Video: failed to sample a valid item")
+            frames, targets = item
+            total = sum(t["labels"].size for t in targets)
+            if total == 0:
+                continue
+            return self._to_tensors(frames, targets)
+        return None
 
     def __getitem__(self, idx: int):
         rng = self._rng_for_idx(idx)
@@ -86,12 +115,13 @@ class MixedSeqDataset(Dataset):
         second = "vid" if choose_img else "img"
 
         for phase in (first, second):
-            try:
-                if phase == "img":
-                    return self._sample_image_item(rng)
-                else:
-                    return self._sample_video_item(rng)
-            except IndexError:
+            if phase == "img":
+                item = self._sample_image_item(rng)
+            else:
+                item = self._sample_video_item(rng)
+            
+            if(item is None):
                 continue
+            return item
 
-        raise IndexError("MixedSeqDataset: failed to draw a valid sample from either source")
+        return None

@@ -37,6 +37,7 @@ VOC_ALIAS = {
 }
 
 UNIFIED_CLASS_NAMES = {
+    0: 'background',
     1: 'aeroplane', 
     2: 'bicycle', 
     3: 'bird', 
@@ -62,7 +63,10 @@ class MapLabelsWrapper(Dataset):
         return len(self.base)
 
     def __getitem__(self, idx: int):
-        frames, targets = self.base[idx]
+        item = self.base[idx]
+        if(item is None):
+            return None
+        frames, targets = item
         mapped_targets = []
         return_empty = False
         for t in targets:
@@ -82,7 +86,7 @@ class MapLabelsWrapper(Dataset):
             })
             
         if(return_empty):
-            return [], []
+            return None
         
         return frames, mapped_targets
     
