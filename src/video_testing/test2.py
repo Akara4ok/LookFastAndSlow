@@ -5,9 +5,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from ObjectDetector.video_object_detector_2 import VideoObjectDetector
+from ObjectDetector.Yolo.video_object_detector import VideoObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
-from ObjectDetector.Anchors.mobilenet_anchors import specs
+from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
 logging.basicConfig(level=logging.INFO)
 

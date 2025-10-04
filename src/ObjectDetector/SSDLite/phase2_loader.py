@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from ObjectDetector.Models.interleaved_classifier import InterleavedClassifier
-from ObjectDetector.Models.fast_and_slow_ssd import LookFastSlowSSD
+from ObjectDetector.SSDLite.Models.interleaved_classifier import InterleavedClassifier
+from ObjectDetector.SSDLite.Models.fast_and_slow_ssd import LookFastSlowSSD
 
 def load_phase2_from_phase1(model: LookFastSlowSSD, path: str, device: str | torch.device = "cpu"):
     sd = torch.load(path, map_location=device)

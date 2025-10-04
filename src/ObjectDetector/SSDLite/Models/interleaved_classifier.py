@@ -2,8 +2,8 @@ import random
 import torch
 import torch.nn as nn
 
-from ObjectDetector.Models.lite_mobilenet_backbone import LiteMobileNetBackbone, _infer_pyramid
-from ObjectDetector.Models.conv_lstm import Adapter, MultiScaleConvLSTM
+from ObjectDetector.SSDLite.Models.lite_mobilenet_backbone import LiteMobileNetBackbone, _infer_pyramid
+from ObjectDetector.SSDLite.Models.conv_lstm import Adapter, MultiScaleConvLSTM
 
 class ClassificationHead(nn.Module):
     def __init__(self, in_ch, num_classes):

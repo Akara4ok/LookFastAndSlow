@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import List
-from ObjectDetector.Models.conv_lstm import MultiScaleConvLSTM, Adapter
-from ObjectDetector.Models.ssd_head import SSDHead 
-from ObjectDetector.Models.lite_mobilenet_backbone import LiteMobileNetBackbone 
+from ObjectDetector.SSDLite.Models.conv_lstm import MultiScaleConvLSTM, Adapter
+from ObjectDetector.SSDLite.Models.ssd_head import SSDHead 
+from ObjectDetector.SSDLite.Models.lite_mobilenet_backbone import LiteMobileNetBackbone 
 
 def _dummy_infer(backbone: nn.Module, img_size: int = 300, device: str = "cpu"):
     backbone = backbone.to(device)

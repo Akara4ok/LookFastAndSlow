@@ -34,48 +34,46 @@ class InvertedResidualBlock(nn.Module):
 
 
 class LiteMobileNetBackbone(nn.Module):
-    def __init__(self, input_size: int = 300, width_mult: int = 1.0):
+    def __init__(self, input_size: int = 300, width_mult: float = 1.0):
         super().__init__()
         self.input_size = input_size
-
-        if(width_mult == 1.0):
-            mobilenet = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
-        else:
-            mobilenet = mobilenet_v2(weights=None, width_mult=width_mult)
+        mobilenet = mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1 if width_mult==1.0 else None,
+                                 width_mult=width_mult)
         self.features = mobilenet.features
-
         self.last_channel = mobilenet.last_channel
+
+        # додаткові пірамідальні рівні
         self.connectors = nn.ModuleList([
             InvertedResidualBlock(self.last_channel, 512, 2, 0.20),
             InvertedResidualBlock(512, 256, 2, 0.25),
             InvertedResidualBlock(256, 256, 2, 0.50),
-            InvertedResidualBlock(256, 64, 2, 0.25)
         ])
-        
-        self.block13_expand = copy.deepcopy(nn.Sequential(
-            self.features[13].conv[0],
-            self.features[13].conv[1]
-        ))
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        features = []
+
+    def forward(self, x: torch.Tensor):
+        feats = []
+        # features[0..12]
         for i in range(13):
             x = self.features[i](x)
-            
-        features.append(self.block13_expand(x))
-        
-        x = self.features[13](x)
-        # features.append(x)
+
+        inv13 = self.features[13]
+        x_exp = inv13.conv[0](x)
+        x_dw  = inv13.conv[1](x_exp)
+
+        feats.append(x_dw)
+
+        x_pw  = inv13.conv[2](x_dw)
+        x     = x + x_pw if inv13.use_res_connect else x_pw
+
         for i in range(14, len(self.features)):
             x = self.features[i](x)
-        
-        features.append(x)
+        feats.append(x)
 
+        # extra рівні
         for extra in self.connectors:
             x = extra(x)
-            features.append(x)
+            feats.append(x)
 
-        return features
+        return feats
 
 def _infer_pyramid(backbone: nn.Module, img_size: int, device) -> tuple:
     backbone = backbone.to(device)

@@ -7,8 +7,8 @@ from pathlib import Path
 import logging
 from Dataset.xml_star_dataset import XMLStarDataset
 from Dataset.voc_dataset import VOCDataset
-from ObjectDetector.image_object_detector import ImageObjectDetector
-from ObjectDetector.Anchors.mobilenet_anchors import specs
+from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
+from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
 logging.basicConfig(level=logging.INFO)
 

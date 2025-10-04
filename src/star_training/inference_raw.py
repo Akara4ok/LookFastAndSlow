@@ -10,9 +10,9 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 
 from ConfigUtils.config import Config
-from ObjectDetector.image_object_detector import ImageObjectDetector
+from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from visualize import visulize          # unchanged helper
-from ObjectDetector.Anchors.mobilenet_anchors import specs
+from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
 logging.basicConfig(level=logging.INFO)
 

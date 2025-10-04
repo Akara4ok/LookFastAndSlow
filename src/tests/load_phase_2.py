@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
-from ObjectDetector.Models.fast_and_slow_ssd import LookFastSlowSSD
-from ObjectDetector.phase2_loader import load_phase2_from_phase1
+from ObjectDetector.SSDLite.Models.fast_and_slow_ssd import LookFastSlowSSD
+from ObjectDetector.SSDLite.phase2_loader import load_phase2_from_phase1
 
 aspects = [
     [2, 3],

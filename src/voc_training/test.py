@@ -9,8 +9,8 @@ from Dataset.xml_star_dataset import XMLStarDataset
 from Dataset.train_dataset import TrainDataset
 from Dataset.test_dataset import TestDataset
 from Dataset.voc_dataset import VOCDataset
-from ObjectDetector.image_object_detector import ImageObjectDetector
-from ObjectDetector.Anchors.mobilenet_anchors import specs
+from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
+from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 from visualize import visulize          # unchanged helper
 
 logging.basicConfig(level=logging.INFO)

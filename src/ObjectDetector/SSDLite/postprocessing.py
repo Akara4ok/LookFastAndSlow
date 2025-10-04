@@ -3,7 +3,7 @@ from typing import Dict
 import torch
 import torch.nn.functional as F
 from torchvision.ops import nms
-from ObjectDetector.Anchors.anchors import Anchors
+from ObjectDetector.SSDLite.Anchors.anchors import Anchors
 
 class PostProcessor:
     def __init__(self,

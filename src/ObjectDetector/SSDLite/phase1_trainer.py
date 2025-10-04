@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 
-from ObjectDetector.Models.interleaved_classifier import InterleavedClassifier
-from ObjectDetector.loss import SSDLoss
+from ObjectDetector.SSDLite.Models.interleaved_classifier import InterleavedClassifier
+from ObjectDetector.SSDLite.loss import SSDLoss
 
 from tqdm import tqdm
 

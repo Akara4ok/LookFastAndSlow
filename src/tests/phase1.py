@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 import torch.nn.functional as F
-from ObjectDetector.Models.interleaved_classifier import InterleavedClassifier
+from ObjectDetector.SSDLite.Models.interleaved_classifier import InterleavedClassifier
 
 B,T,H,W = 8,3,300,300
 num_classes = 100

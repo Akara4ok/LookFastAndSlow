@@ -9,12 +9,12 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
-from ObjectDetector.Models.fast_and_slow_ssd import LookFastSlowSSD
-from ObjectDetector.postprocessing import PostProcessor
-from ObjectDetector.loss import SSDLoss
+from ObjectDetector.SSDLite.Anchors.anchors import Anchors, AnchorSpec
+from ObjectDetector.SSDLite.Models.fast_and_slow_ssd import LookFastSlowSSD
+from ObjectDetector.SSDLite.postprocessing import PostProcessor
+from ObjectDetector.SSDLite.loss import SSDLoss
+from ObjectDetector.SSDLite.phase2_loader import load_phase2_from_phase1
 from ObjectDetector.map import MeanAveragePrecision
-from ObjectDetector.phase2_loader import load_phase2_from_phase1
 
 class VideoObjectDetector:
     def __init__(self, labels: list[str], config: dict, specs: list[AnchorSpec],

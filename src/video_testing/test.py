@@ -6,9 +6,9 @@ import torch
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from ObjectDetector.image_object_detector import ImageObjectDetector
+from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
-from ObjectDetector.Anchors.mobilenet_anchors import specs
+from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
 logging.basicConfig(level=logging.INFO)
 

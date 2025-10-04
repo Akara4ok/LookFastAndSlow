@@ -11,10 +11,10 @@ from torchvision import transforms
 
 from Dataset.train_dataset import TrainDataset
 from Dataset.test_dataset import TestDataset
-from ObjectDetector.Models.ssd_lite import SSDLite
-from ObjectDetector.Anchors.anchors import Anchors, AnchorSpec
-from ObjectDetector.loss import SSDLoss
-from ObjectDetector.postprocessing import PostProcessor
+from ObjectDetector.SSDLite.Models.ssd_lite import SSDLite
+from ObjectDetector.SSDLite.Anchors.anchors import Anchors, AnchorSpec
+from ObjectDetector.SSDLite.loss import SSDLoss
+from ObjectDetector.SSDLite.postprocessing import PostProcessor
 from ObjectDetector.map import MeanAveragePrecision
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -27,7 +27,13 @@ class ImageObjectDetector:
         a_cfg = self.cfg["anchors"]
         self.anchors = Anchors(specs, self.cfg["model"]["img_size"], a_cfg["variances"], device=self.device)
 
-        self.model = SSDLite(config['model']['img_size'], len(labels), self.anchors.aspects).to(self.device)
+        self.model = SSDLite(config['model']['img_size'], len(labels), self.anchors.aspects)
+
+        if self.device.type == "cuda":
+            torch.backends.cudnn.benchmark = True   # NEW: дає автотюн під твій вхід
+            self.model = self.model.to(self.device, memory_format=torch.channels_last)
+        else:
+            self.model = self.model.to(self.device)
 
         self.check_dims()
 
@@ -162,28 +168,33 @@ class ImageObjectDetector:
 
         with torch.set_grad_enabled(train):
             for imgs, cls_gt, loc_gt, raw in loader:
-                imgs  = imgs.to(self.device)
-                cls_gt = cls_gt.to(self.device)
-                loc_gt = loc_gt.to(self.device)
+                # NEW: channels_last для батча
+                if self.device.type == "cuda":
+                    imgs = imgs.to(self.device, non_blocking=True, memory_format=torch.channels_last)
+                else:
+                    imgs = imgs.to(self.device)
 
-                loc_p, cls_p = self.model(imgs)
-                loc_loss, cls_loss = self.criterion(loc_p, cls_p, loc_gt, cls_gt)
-                loss = loc_loss + cls_loss
+                cls_gt = cls_gt.to(self.device, non_blocking=True)
+                loc_gt = loc_gt.to(self.device, non_blocking=True)
 
-                if(compute_metric):
-                    preds_batch = []
-                    for cls_i, loc_i in zip(cls_p, loc_p):
-                        preds_batch.append(self.post.ssd_postprocess(cls_i, loc_i))
-                    self.metric.update(preds_batch, raw)
+                # NEW: autocast для FP16 на GPU
+                if self.device.type == "cuda":
+                    autocast_ctx = torch.cuda.amp.autocast()
+                else:
+                    # на CPU/без CUDA просто порожній контекст
+                    from contextlib import nullcontext
+                    autocast_ctx = nullcontext()
+
+                with autocast_ctx:
+                    loc_p, cls_p = self.model(imgs)
+                    loc_loss, cls_loss = self.criterion(loc_p, cls_p, loc_gt, cls_gt)
+                    loss = loc_loss + cls_loss
 
                 if train:
                     self.optimizer.zero_grad()
+                    # Якщо без GradScaler:
                     loss.backward()
                     self.optimizer.step()
-
-                total_loss += loss.item()
-                total_loc += loc_loss.item()
-                total_cls += cls_loss.item()
                 
                 n_batches += 1
 
@@ -240,20 +251,54 @@ class ImageObjectDetector:
         return  res["mAP"]
 
     def predict(self, img: np.ndarray) -> Dict[str, torch.Tensor]:
-        if(isinstance(img, np.ndarray)):
-            img = transforms.ToTensor()(img)
-            img = transforms.Resize((300, 300))(img)
-            img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std =[0.229, 0.224, 0.225])(img)
-            
-        img = img.unsqueeze(0)
-        img = img.to(self.device)
+        if isinstance(img, np.ndarray):
+            # (H,W,C) -> (C,H,W), float32 [0,1]
+            t = torch.from_numpy(img).permute(2,0,1).float().div_(255.0)
+
+            # resize очікує 4D, тож тимчасово додаємо batch, потім прибираємо
+            t = torch.nn.functional.interpolate(
+                t.unsqueeze(0), size=(300, 300),
+                mode='bilinear', align_corners=False
+            ).squeeze(0)
+
+            # нормалізація
+            mean = torch.tensor([0.485, 0.456, 0.406], device=self.device).view(3,1,1)
+            std  = torch.tensor([0.229, 0.224, 0.225], device=self.device).view(3,1,1)
+            t = (t.to(self.device, non_blocking=True) - mean) / std
+
+            img_t = t.unsqueeze(0)  # ТЕПЕР 4D: (1,3,300,300)
+            if self.device.type == "cuda":
+                img_t = img_t.to(memory_format=torch.channels_last)  # <-- ВАЖЛИВО: тільки зараз
+        else:
+            # якщо вже torch.Tensor
+            t = img
+            if t.dtype != torch.float32:
+                t = t.float()
+            if t.ndim == 3:
+                t = t.unsqueeze(0)  # зробити 4D
+            elif t.ndim != 4:
+                raise ValueError(f"predict(): expected 3D or 4D tensor, got {t.ndim}D")
+
+            # до пристрою
+            t = t.to(self.device, non_blocking=True)
+            # якщо 3-канальний і не нормалізований — (опційно) застосуй свою нормалізацію тут
+
+            img_t = t
+            if self.device.type == "cuda":
+                img_t = img_t.to(memory_format=torch.channels_last)  # тепер 4D, ок
 
         self.model.eval()
-        with torch.no_grad():
-            loc_p, cls_p = self.model(img)
-            
-        result = self.post.ssd_postprocess(cls_p.squeeze(), loc_p.squeeze())
-        # print(result)
-        # result = self.post.simple_postprocess(cls_p.squeeze(), loc_p.squeeze())
+
+        # AMP тільки для CUDA
+        if self.device.type == "cuda":
+            autocast_ctx = torch.cuda.amp.autocast()
+        else:
+            from contextlib import nullcontext
+            autocast_ctx = nullcontext()
+
+        with torch.inference_mode(), autocast_ctx:
+            loc_p, cls_p = self.model(img_t)
+
+        result = self.post.simple_postprocess(cls_p.squeeze(0), loc_p.squeeze(0))
+        # result = self.post.ssd_postprocess(cls_p.squeeze(0), loc_p.squeeze(0))
         return result

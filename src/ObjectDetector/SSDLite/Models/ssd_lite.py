@@ -1,6 +1,6 @@
 import torch.nn as nn
-from ObjectDetector.Models.lite_mobilenet_backbone import LiteMobileNetBackbone
-from ObjectDetector.Models.ssd_head import SSDHead
+from ObjectDetector.SSDLite.Models.lite_mobilenet_backbone import LiteMobileNetBackbone
+from ObjectDetector.SSDLite.Models.ssd_head import SSDHead
 
 
 class SSDLite(nn.Module):
@@ -12,7 +12,7 @@ class SSDLite(nn.Module):
 
         self.backbone = LiteMobileNetBackbone(input_size)
 
-        self.head = SSDHead([576, 1280, 512, 256, 256, 64],
+        self.head = SSDHead([576, 1280, 512, 256, 256],
                             num_classes,
                             aspects)
 

@@ -3,7 +3,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
-from ObjectDetector.Models.conv_lstm import ConvLSTM, ConvLSTMCell
+from ObjectDetector.SSDLite.Models.conv_lstm import ConvLSTM, ConvLSTMCell
 
 torch.manual_seed(0)
 device = "cuda" if torch.cuda.is_available() else "cpu"
