@@ -1,17 +1,13 @@
 from torch.utils.data import Dataset
 from torchvision import transforms
-from Dataset.augmentation import Compose, ResizeNormalize, PhotometricDistort, Expand, RandomSampleCrop, RandomMirror, ToNormalizedCoords
+from Dataset.SSDLite.augmentation import Compose, ResizeNormalize
 
-class TrainDataset(Dataset):
+class TestDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):
         super().__init__()
         self.dataset = dataset
         self.transforms = Compose([
-            PhotometricDistort(),
-            Expand([128, 128, 128]),
-            RandomSampleCrop(),
-            RandomMirror(),
-            ResizeNormalize(img_size)
+            ResizeNormalize(size=img_size),
         ])
 
     def __len__(self):

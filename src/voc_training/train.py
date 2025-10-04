@@ -5,8 +5,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from Dataset.xml_star_dataset import XMLStarDataset
-from Dataset.voc_dataset import VOCDataset
+from Dataset.SSDLite.xml_star_dataset import XMLStarDataset
+from Dataset.SSDLite.voc_dataset import VOCDataset
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 

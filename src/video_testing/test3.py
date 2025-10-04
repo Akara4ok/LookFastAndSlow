@@ -6,10 +6,10 @@ from ConfigUtils.config import Config
 from pathlib import Path
 import logging
 import numpy as np
-from Dataset.xml_star_dataset import XMLStarDataset
-from Dataset.train_dataset import TrainDataset
-from Dataset.test_dataset import TestDataset
-from Dataset.voc_dataset import VOCDataset
+from Dataset.SSDLite.xml_star_dataset import XMLStarDataset
+from Dataset.SSDLite.train_dataset import TrainDataset
+from Dataset.SSDLite.test_dataset import TestDataset
+from Dataset.SSDLite.voc_dataset import VOCDataset
 from ObjectDetector.Yolo.video_object_detector import VideoObjectDetector
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs

@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from Dataset.image_seq_dataset import ImageSeqDataset
+from Dataset.SSDLite.image_seq_dataset import ImageSeqDataset
 from ObjectDetector.SSDLite.phase1_trainer import Phase1Trainer
 
 logging.basicConfig(level=logging.INFO)

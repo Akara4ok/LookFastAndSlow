@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Dataset.voc_dataset import VOCDataset
+from Dataset.SSDLite.voc_dataset import VOCDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
-from Dataset.youtube_bb_dataset import YoutubeBBDataset
-from Dataset.map_labels_wrapper import MapLabelsWrapper
-from Dataset.mixed_seq_dataset import MixedSeqDataset
+from Dataset.SSDLite.youtube_bb_dataset import YoutubeBBDataset
+from Dataset.SSDLite.map_labels_wrapper import MapLabelsWrapper
+from Dataset.SSDLite.mixed_seq_dataset import MixedSeqDataset
 
 import numpy as np
 

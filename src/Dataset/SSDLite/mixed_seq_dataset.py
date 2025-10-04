@@ -5,7 +5,7 @@ from typing import Optional, Tuple, List
 import random
 from torch.utils.data import Dataset, get_worker_info
 
-from Dataset.augmentation import ResizeNormalize
+from Dataset.SSDLite.augmentation import ResizeNormalize
 
 class MixedSeqDataset(Dataset):
     def __init__(

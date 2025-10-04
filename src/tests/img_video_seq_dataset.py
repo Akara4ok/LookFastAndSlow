@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Dataset.voc_dataset import VOCDataset
+from Dataset.SSDLite.voc_dataset import VOCDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 
 import numpy as np

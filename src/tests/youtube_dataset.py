@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Dataset.youtube_bb_dataset import YoutubeBBDataset
+from Dataset.SSDLite.youtube_bb_dataset import YoutubeBBDataset
 
 # Creates folder, downloads annotations if missing, then lazily downloads videos as needed.
 ds = YoutubeBBDataset(

@@ -5,10 +5,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from Dataset.xml_star_dataset import XMLStarDataset
-from Dataset.train_dataset import TrainDataset
-from Dataset.test_dataset import TestDataset
-from Dataset.voc_dataset import VOCDataset
+from Dataset.SSDLite.xml_star_dataset import XMLStarDataset
+from Dataset.SSDLite.train_dataset import TrainDataset
+from Dataset.SSDLite.test_dataset import TestDataset
+from Dataset.SSDLite.voc_dataset import VOCDataset
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 from visualize import visulize          # unchanged helper

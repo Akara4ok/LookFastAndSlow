@@ -9,8 +9,8 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 
-from Dataset.train_dataset import TrainDataset
-from Dataset.test_dataset import TestDataset
+from Dataset.SSDLite.train_dataset import TrainDataset
+from Dataset.SSDLite.test_dataset import TestDataset
 from ObjectDetector.SSDLite.Models.ssd_lite import SSDLite
 from ObjectDetector.SSDLite.Anchors.anchors import Anchors, AnchorSpec
 from ObjectDetector.SSDLite.loss import SSDLoss

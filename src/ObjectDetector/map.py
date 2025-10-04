@@ -5,7 +5,7 @@ from typing import Dict, List
 import torch
 import numpy as np
 
-def _box_iou(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def _bLogsox_iou(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """IoU between two sets of corner-format boxes (xmin, ymin, xmax, ymax)."""
     x1 = np.maximum(a[:, None, 0], b[None, :, 0])
     y1 = np.maximum(a[:, None, 1], b[None, :, 1])
