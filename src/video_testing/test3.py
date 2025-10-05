@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 # config['model']['path'] = "Model/voc.weights.h5"
-config['model']['path'] = "Model/voc_video.pt"
+config['model']['path'] = "Model/yolo11x.pt"
 config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 32
 config['anchors']['post_iou_threshold'] = 0.45
@@ -42,12 +42,10 @@ objectDetector = (labels, config, specs)
 objectDetector = VideoObjectDetector(labels, config, specs)
 objectDetector.load_weights(config["model"]["path"])
 
-# for img, tgt in test_ds:
-    # hwc = img.permute(1, 2, 0).clamp(0, 1).numpy() * 255
-    # hwc = hwc.astype(np.uint8)
-    # prediction = objectDetector.predict(hwc)
-    # visulize(hwc / 255, prediction, labels)
-    # visulize(img.permute(1, 2, 0), prediction, labels)
+for img, tgt in test_ds:
+    prediction = objectDetector.predict(img)
+    visulize(img / 255, prediction, labels)
+    # visulize(img, prediction, labels)
 
-map = objectDetector.test(test_ds, img_to_test)
-print(map)
+# map = objectDetector.test(test_ds, img_to_test)
+# print(map)

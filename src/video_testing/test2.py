@@ -12,7 +12,7 @@ from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/voc_video.pt"
+config['model']['path'] = "Model/yolo11x.pt"
 config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 32
 config['anchors']['post_iou_threshold'] = 0.2

@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 def visulize(image: Image, detection_result: dict, label_map: list[str]):
-    boxes = detection_result['boxes'].cpu().numpy()
-    scores = detection_result['scores'].cpu().numpy()
-    classes = detection_result['classes'].cpu().numpy()
+    boxes = detection_result['boxes']
+    scores = detection_result['scores']
+    classes = detection_result['classes']
 
     # Вивід
     plt.figure(figsize=(6, 6))
@@ -17,6 +17,7 @@ def visulize(image: Image, detection_result: dict, label_map: list[str]):
             continue
         box = boxes[i]
         cls = classes[i]
+        print(cls)
         label = label_map[cls]
         if(label == "background"):
             continue
@@ -24,10 +25,13 @@ def visulize(image: Image, detection_result: dict, label_map: list[str]):
         xmin, ymin, xmax, ymax = box
         h = ymax - ymin
         w = xmax - xmin
-        rect = plt.Rectangle((xmin * 300, ymin * 300), w * 300, h * 300,
+
+        img_w = image.shape[1]
+        img_h = image.shape[0]
+        rect = plt.Rectangle((xmin * img_w, ymin * img_h), w * img_w, h * img_h,
                             fill=False, edgecolor='red', linewidth=2)
         ax.add_patch(rect)
-        ax.text(xmin * 300, ymin * 300 - 5, f"{label} {score:.2f}", color='red', fontsize=8)
+        ax.text(xmin * img_w, ymin * img_h - 5, f"{label} {score:.2f}", color='red', fontsize=8)
 
     plt.axis(False)
     plt.show()

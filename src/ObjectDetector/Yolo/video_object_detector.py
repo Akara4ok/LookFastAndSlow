@@ -2,7 +2,7 @@ from typing import Optional
 from ultralytics import YOLO
 import torch
 import numpy as np
-from Dataset.test_dataset import TestDataset
+from Dataset.SSDLite.test_dataset import TestDataset
 from torch.utils.data import Dataset, DataLoader, random_split
 from ObjectDetector.map import MeanAveragePrecision
 import torch.nn.functional as F
@@ -54,29 +54,31 @@ class VideoObjectDetector:
         return self._results_to_pred_dict(results)
     
     def _results_to_pred_dict(self, r):
-        boxes = r.boxes.xyxyn
-        scores = r.boxes.conf
-        classes = r.boxes.cls.int()
+        boxes = r.boxes.xyxyn.cpu().numpy().astype(np.float32)
+        scores = r.boxes.conf.cpu().numpy().astype(np.float32)
+        classes = r.boxes.cls.cpu().numpy().astype(np.int64)
 
         mapped_boxes = []
         mapped_scores = []
         mapped_classes = []
 
+
         for box, score, cls_id in zip(boxes, scores, classes):
+            print(box)
             cid = int(cls_id.item())
             if cid in MAP_CLASS:
-                mapped_boxes.append(box.unsqueeze(0))
-                mapped_scores.append(score.unsqueeze(0))
-                mapped_classes.append(torch.tensor(MAP_CLASS[cid], dtype=torch.int64))
+                mapped_boxes.append(np.expand_dims(box, axis=0))
+                mapped_scores.append(np.expand_dims(score, axis=0))
+                mapped_classes.append(MAP_CLASS[cid])
 
         if len(mapped_boxes) > 0:
-            boxes_out = torch.cat(mapped_boxes, dim=0)
-            scores_out = torch.cat(mapped_scores, dim=0)
-            classes_out = torch.stack(mapped_classes, dim=0)
+            boxes_out = np.concatenate(mapped_boxes, axis=0)
+            scores_out = np.concatenate(mapped_scores, axis=0)
+            classes_out = np.stack(mapped_classes, axis=0)
         else:
-            boxes_out = torch.empty((0, 4), dtype=boxes.dtype)
-            scores_out = torch.empty((0,), dtype=scores.dtype)
-            classes_out = torch.empty((0,), dtype=torch.int64)
+            boxes_out = np.empty((0, 4), dtype=np.float32)
+            scores_out = np.empty((0,), dtype=np.float32)
+            classes_out = np.empty((0,), dtype=np.int64)
 
         return dict(boxes=boxes_out, scores=scores_out, classes=classes_out)
         

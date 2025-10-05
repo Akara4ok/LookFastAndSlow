@@ -160,6 +160,17 @@ class ToNormalizedCoords():
 
         return img, tgt
     
+class ToNormalizedCenterCoords():
+    def __call__(self, img: np.ndarray, tgt: dict):
+        height, width, _ = img.shape
+        boxes_xyxy = tgt["boxes"]
+
+        tgt["boxes"][:, 2] = (boxes_xyxy[:, 2] - boxes_xyxy[:, 0]) / width 
+        tgt["boxes"][:, 3] /= (boxes_xyxy[:, 3] - boxes_xyxy[:, 1]) / height 
+        tgt["boxes"][:, 0] = tgt["boxes"][:, 0] + 0.5 * tgt["boxes"][:, 2]
+        tgt["boxes"][:, 1] = tgt["boxes"][:, 1] + 0.5 * tgt["boxes"][:, 3]
+        return img, tgt
+    
 class PhotometricDistort():
     def __init__(self):
         self.transform = [
@@ -259,6 +270,21 @@ class ResizeNormalize():
         img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                 std =[0.229, 0.224, 0.225])(img)
 
+        tgt["boxes"] = torch.tensor(tgt["boxes"], dtype=torch.float32)
+        tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
+
+        return img, tgt
+    
+class ResizeNormalizeYolo():
+    def __init__(self, size: int):
+        self.size = size
+        
+    def __call__(self, img: np.ndarray, tgt: dict):
+        img, tgt = ToNormalizedCenterCoords()(img, tgt)
+        img = (img).astype(np.uint8)
+        img = transforms.ToTensor()(img)
+        img = transforms.Resize((self.size, self.size))(img)
+        
         tgt["boxes"] = torch.tensor(tgt["boxes"], dtype=torch.float32)
         tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
 
