@@ -1,12 +1,12 @@
 from torch.utils.data import Dataset
-from Dataset.augmentation import Compose, ResizeNormalizeYolo
+from Dataset.augmentation import Compose, ResizeNormalizeYoloTest
 
-class YoloDataset(Dataset):
+class YoloTestDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):
         super().__init__()
         self.dataset = dataset
         self.transforms = Compose([
-            ResizeNormalizeYolo(img_size),
+            ResizeNormalizeYoloTest(img_size),
         ])
 
     def __len__(self):

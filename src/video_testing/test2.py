@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from ObjectDetector.Yolo.video_object_detector import VideoObjectDetector
+from ObjectDetector.Yolo.image_object_detector import ImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
@@ -19,14 +19,13 @@ config['anchors']['post_iou_threshold'] = 0.2
 config['anchors']['confidence'] = 0.5
 config['anchors']['top_k_classes'] = 200
 
-labels = [ "background",
-    "aeroplane", "bicycle", "bird", "boat", "bottle",
+labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "bus", "car", "cat", "chair", "cow",
     "diningtable", "dog", "horse", "motorbike", "person",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
-objectDetector = VideoObjectDetector(labels, config, specs)
-objectDetector.load_weights(config["model"]["path"])
+objectDetector = ImageObjectDetector(labels, config)
+objectDetector.load_weights("Model/vocyolo11x.weights.h5", "Model/yolo11x.pt")
 
 videoProcessor = VideoProcessor(objectDetector)
 videoProcessor.process_video("Data/test.mp4", "Data/output.mp4", True)

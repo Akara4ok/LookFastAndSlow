@@ -18,16 +18,10 @@ logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 config['model']['path'] = "Model/yolo11x.pt"
+config['model']['img_size'] = 640
 config['train']['epochs'] = 10
-config['data']['path'] = "Data/VOCdevkit"
+config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 1
-
-
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
 
 map = {
     0: 14,
@@ -53,20 +47,27 @@ map = {
     62: 0
 }
 
+labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
+    "bus", "car", "cat", "chair", "cow",
+    "diningtable", "dog", "horse", "motorbike", "person",
+    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
+]
+
 objectDetector = ImageObjectDetector(labels, config, map)
 objectDetector.load_weights("Model/yolo11x.pt")
-# objectDetector.load_weights("Model/test.weights.h5", "Model/yolo11x.pt")
-# objectDetector.save_checkpoint(objectDetector.model.model, labels, "Model/test.weights.h5")
 
-train_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
-train_ds = YoloDataset(train_ds, 640)
+test_ds = VOCDataset(config['data']['path'], "2007", "test", False)
+# test_ds = YoloDataset(train_ds, 640)
 
-# # objectDetector.train(train_ds)
+map = objectDetector.test(test_ds, 96)
+print(map)
 
-test_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
-for img, tgt in test_ds:
-    prediction = objectDetector.predict(img)
-    visulize(img / 255, prediction, labels)
-# # prediction = objectDetector.predict(img)
-# # visulize(img, prediction, labels)labels
+# test_ds = VOCDataset(config['data']['path'], "2007", "test", False)
+# for img, tgt in test_ds:
+#     prediction = objectDetector.predict(img)
+#     visulize(img / 255, prediction, labels)
+
+
+
+
 

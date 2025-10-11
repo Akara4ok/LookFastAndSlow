@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 from torchvision import transforms
-from Dataset.SSDLite.augmentation import Compose, ResizeNormalize
+from Dataset.augmentation import Compose, ResizeNormalize
 
 class TestDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):

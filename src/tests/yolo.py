@@ -23,7 +23,7 @@ labels = ["person"] * 80
 objectDetector = ImageObjectDetector(None, cfg)
 objectDetector.load_weights(cfg["model"]["path"])
 
-test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", 300, False)
+test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", False)
 
 for img, tgt in test_ds:
     prediction = objectDetector.predict(img)

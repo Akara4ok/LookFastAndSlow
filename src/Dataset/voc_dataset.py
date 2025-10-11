@@ -39,13 +39,11 @@ class VOCDataset(Dataset):
                  root: str | Path,
                  year: int,
                  split: Literal["train", "val", "trainval", "test"] = "trainval",
-                 img_size: int = 300,
                  use_cache = True):
         super().__init__()
         self.root = Path(root).expanduser()
         self.year = str(year)
         self.split = split
-        self.img_size = img_size
 
         self._download_if_needed()
         self.image_ids = self._read_split_file()
@@ -53,7 +51,7 @@ class VOCDataset(Dataset):
         self.img_dir = self.root / f"VOC{self.year}" / "JPEGImages"
         self.ann_dir = self.root / f"VOC{self.year}" / "Annotations"
 
-        self.class_to_idx = {name: i + 1 for i, name in enumerate(self.VOC_CLASSES)}
+        self.class_to_idx = {name: i for i, name in enumerate(self.VOC_CLASSES)}
         
         self.use_cache = use_cache
         self.is_cached = False

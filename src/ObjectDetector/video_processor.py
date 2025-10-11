@@ -24,9 +24,9 @@ class VideoProcessor:
         if results is None:
             return frame
         
-        xyxy = results["boxes"].detach().cpu().numpy()
-        confs = results["scores"].detach().cpu().numpy()
-        clss = results["classes"].detach().cpu().numpy().astype(int)
+        xyxy = results["boxes"]
+        confs = results["scores"]
+        clss = results["classes"].astype(int)
 
         for (x1, y1, x2, y2), conf, cls in zip(xyxy, confs, clss):
             x1 = x1 * w

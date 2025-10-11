@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 from torchvision import transforms
-from Dataset.SSDLite.augmentation import Compose, ResizeNormalize, PhotometricDistort, Expand, RandomSampleCrop, RandomMirror, ToNormalizedCoords
+from Dataset.augmentation import Compose, ResizeNormalize, PhotometricDistort, Expand, RandomSampleCrop, RandomMirror, ToNormalizedCoords
 
 class TrainDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):

@@ -48,7 +48,7 @@ class XMLStarDataset(Dataset):
         images_dir = self.dataset_path + "/images"
 
         samples, label_map = [], {}
-        next_id = 1
+        next_id = 0
 
         for xml_file in os.listdir(annotation_dir):
             if not xml_file.endswith(".xml"):

@@ -17,7 +17,6 @@ def visulize(image: Image, detection_result: dict, label_map: list[str]):
             continue
         box = boxes[i]
         cls = classes[i]
-        print(cls)
         label = label_map[cls]
         if(label == "background"):
             continue

@@ -6,7 +6,7 @@ from ConfigUtils.config import Config
 from pathlib import Path
 import logging
 from Dataset.SSDLite.xml_star_dataset import XMLStarDataset
-from Dataset.SSDLite.voc_dataset import VOCDataset
+from Dataset.voc_dataset import VOCDataset
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
@@ -22,7 +22,7 @@ config['anchors']['confidence'] = 0.5
 config['anchors']['top_k_classes'] = 200
 config['train']['batch_size'] = 4
 
-train_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", 300)
+train_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval")
 
 objectDetector = ImageObjectDetector([ "background",
     "aeroplane", "bicycle", "bird", "boat", "bottle",

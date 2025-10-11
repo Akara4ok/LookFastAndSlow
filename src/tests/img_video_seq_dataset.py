@@ -3,12 +3,12 @@ import sys
 import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Dataset.SSDLite.voc_dataset import VOCDataset
+from Dataset.voc_dataset import VOCDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 
 import numpy as np
 
-voc_ds = VOCDataset("Data/VOCDevKit", "2007", "trainval", 300, use_cache=False)
+voc_ds = VOCDataset("Data/VOCDevKit", "2007", "trainval", use_cache=False)
 ds = ImageSeqVideoDataset(voc_ds)
 
 for seq, tgt in ds:

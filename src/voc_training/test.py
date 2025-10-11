@@ -8,7 +8,7 @@ import logging
 from Dataset.SSDLite.xml_star_dataset import XMLStarDataset
 from Dataset.SSDLite.train_dataset import TrainDataset
 from Dataset.SSDLite.test_dataset import TestDataset
-from Dataset.SSDLite.voc_dataset import VOCDataset
+from Dataset.voc_dataset import VOCDataset
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 from visualize import visulize          # unchanged helper
@@ -23,8 +23,8 @@ config['anchors']['post_iou_threshold'] = 0.45
 config['anchors']['confidence'] = 0.01
 config['anchors']['top_k_classes'] = 200
 
-test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", 300, False)
-# test_ds = TestDataset(VOCDataset("Data/VOCDevKitTest", "2007", "test", 300, False), 300)
+test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", False)
+# test_ds = TestDataset(VOCDataset("Data/VOCDevKitTest", "2007", "test", False), 300)
 
 img_to_test = 96
 

@@ -162,13 +162,21 @@ class ToNormalizedCoords():
     
 class ToNormalizedCenterCoords():
     def __call__(self, img: np.ndarray, tgt: dict):
-        height, width, _ = img.shape
-        boxes_xyxy = tgt["boxes"]
+        H, W, _ = img.shape
+        boxes = tgt["boxes"].astype(np.float32)
 
-        tgt["boxes"][:, 2] = (boxes_xyxy[:, 2] - boxes_xyxy[:, 0]) / width 
-        tgt["boxes"][:, 3] /= (boxes_xyxy[:, 3] - boxes_xyxy[:, 1]) / height 
-        tgt["boxes"][:, 0] = tgt["boxes"][:, 0] + 0.5 * tgt["boxes"][:, 2]
-        tgt["boxes"][:, 1] = tgt["boxes"][:, 1] + 0.5 * tgt["boxes"][:, 3]
+        x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+
+        cx = (x1 + x2) * 0.5
+        cy = (y1 + y2) * 0.5
+        w  = (x2 - x1)
+        h  = (y2 - y1)
+
+        tgt["boxes"] = np.stack([cx / W, cy / H, w / W, h / H], axis=1).astype(np.float32)
+
+        tgt["boxes"][:, 0::2] = np.clip(tgt["boxes"][:, 0::2], 0.0, 1.0)
+        tgt["boxes"][:, 1::2] = np.clip(tgt["boxes"][:, 1::2], 0.0, 1.0)
+
         return img, tgt
     
 class PhotometricDistort():
@@ -271,7 +279,7 @@ class ResizeNormalize():
                                 std =[0.229, 0.224, 0.225])(img)
 
         tgt["boxes"] = torch.tensor(tgt["boxes"], dtype=torch.float32)
-        tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
+        tgt["labels"] = torch.tensor(tgt["labels"] + 1, dtype=torch.int64)
 
         return img, tgt
     
@@ -289,3 +297,20 @@ class ResizeNormalizeYolo():
         tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
 
         return img, tgt
+    
+class ResizeNormalizeYoloTest():
+    def __init__(self, size: int):
+        self.size = size
+        
+    def __call__(self, img: np.ndarray, tgt: dict):
+        img, tgt = ToNormalizedCoords()(img, tgt)
+        img = (img).astype(np.uint8)
+        img = transforms.ToTensor()(img)
+        img = transforms.Resize((self.size, self.size))(img)
+        
+        tgt["boxes"] = torch.tensor(tgt["boxes"], dtype=torch.float32)
+        tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
+
+        return img, tgt
+
+
