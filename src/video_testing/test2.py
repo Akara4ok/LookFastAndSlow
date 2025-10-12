@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ConfigUtils.config import Config
 from pathlib import Path
 import logging
-from ObjectDetector.Yolo.image_object_detector import ImageObjectDetector
+from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
@@ -24,7 +24,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "diningtable", "dog", "horse", "motorbike", "person",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
-objectDetector = ImageObjectDetector(labels, config)
+objectDetector = CustomImageObjectDetector(labels, config)
 objectDetector.load_weights("Model/vocyolo11x.weights.h5", "Model/yolo11x.pt")
 
 videoProcessor = VideoProcessor(objectDetector)

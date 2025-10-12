@@ -4,13 +4,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import logging
 from pathlib import Path
-from PIL import Image
-import numpy as np
 
 from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
 from Dataset.Yolo.YoloDataset import YoloDataset
-from ObjectDetector.Yolo.image_object_detector import ImageObjectDetector
+from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
 from visualize import visulize
 
 
@@ -53,7 +51,7 @@ map = {
     62: 0
 }
 
-objectDetector = ImageObjectDetector(labels, config, map)
+objectDetector = CustomImageObjectDetector(labels, config, map)
 objectDetector.load_weights("Model/yolo11x.pt")
 # objectDetector.load_weights("Model/test.weights.h5", "Model/yolo11x.pt")
 # objectDetector.save_checkpoint(objectDetector.model.model, labels, "Model/test.weights.h5")

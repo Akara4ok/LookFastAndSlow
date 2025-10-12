@@ -9,7 +9,7 @@ import numpy as np
 
 from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
-from ObjectDetector.Yolo.image_object_detector import ImageObjectDetector
+from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
 from visualize import visulize
 
 
@@ -20,7 +20,7 @@ cfg['model']['path'] = "Model/yolo11x.pt"
 
 labels = ["person"] * 80
 
-objectDetector = ImageObjectDetector(None, cfg)
+objectDetector = CustomImageObjectDetector(None, cfg)
 objectDetector.load_weights(cfg["model"]["path"])
 
 test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", False)

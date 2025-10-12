@@ -16,23 +16,13 @@ from ultralytics import YOLO
 from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.nn.modules.head import Detect
 
-from ObjectDetector.map import MeanAveragePrecision
-from Dataset.Yolo.YoloTestDataset import YoloTestDataset
+from ObjectDetector.Yolo.image_object_detector_base import ImageObjectDetectorBase
 
-class ImageObjectDetector:
+
+class CustomImageObjectDetector(ImageObjectDetectorBase):
     def __init__(self, labels: List[str], config: Dict, map_classes = None, device: torch.device | str | None = None):
+        super().__init__(config, map_classes, device)
         self.labels = labels
-        self.config = config
-
-        if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        elif isinstance(device, str):
-            self.device = torch.device(device)
-        else:
-            self.device = device
-
-        self.model = None
-        self.map_classes = map_classes
 
     def load_weights(self, weights_path: str, base: str = None):
         if base is None:
@@ -61,83 +51,6 @@ class ImageObjectDetector:
             self.model.to(self.device).eval()
             logging.info(f"Model loaded to {self.device} from {weights_path} and adapted from {base}")
 
-
-    @torch.no_grad()
-    def predict(self, frame: np.ndarray) -> Dict[str, np.ndarray]:
-        res = self.model.predict(frame, verbose=False)
-
-        r0 = res[0]
-        if r0.boxes is None or len(r0.boxes) == 0:
-            return {"boxes": np.zeros((0, 4), np.float32), "scores": np.zeros((0,), np.float32), "classes": np.zeros((0,), np.int64)}
-
-        boxes_xyxy = r0.boxes.xyxyn.detach().cpu().numpy().astype(np.float32)
-        scores = r0.boxes.conf.detach().cpu().numpy().astype(np.float32)
-        classes = r0.boxes.cls.detach().cpu().numpy().astype(np.int64)
-        predicted = {"boxes": boxes_xyxy, "scores": scores, "classes": classes}
-        return self.map_result_classes(predicted)
-    
-    def map_result_classes(self, predicted: dict) -> dict:
-        if(self.map_classes is None):
-            return predicted
-        
-        mapped_boxes = []
-        mapped_scores = []
-        mapped_classes = []
-        for box, score, cls_id in zip(predicted["boxes"], predicted["scores"], predicted["classes"]):
-            if cls_id in self.map_classes:
-                mapped_boxes.append(np.expand_dims(box, axis=0))
-                mapped_scores.append(np.expand_dims(score, axis=0))
-                mapped_classes.append(self.map_classes[cls_id])
-
-        if len(mapped_boxes) > 0:
-            boxes_out = np.concatenate(mapped_boxes, axis=0)
-            scores_out = np.concatenate(mapped_scores, axis=0)
-            classes_out = np.stack(mapped_classes, axis=0)
-        else:
-            boxes_out = np.empty((0, 4), dtype=np.float32)
-            scores_out = np.empty((0,), dtype=np.float32)
-            classes_out = np.empty((0,), dtype=np.int64)
-
-        return dict(boxes=boxes_out, scores=scores_out, classes=classes_out)
-    
-    def test(self, ds: Dataset, count: int) -> float:
-        logging.info("Testing started")
-        ds = YoloTestDataset(ds, self.config["model"]["img_size"])
-        dl_test = DataLoader(ds,
-                              batch_size=self.config["train"]["batch_size"],
-                              shuffle=False,
-                              num_workers=0,
-                              collate_fn=self.test_collate,
-                              drop_last=False)
-
-        test_map = self._test_model(dl_test, count)
-        return test_map
-                
-    def _test_model(self, dl_test: DataLoader, count: int) -> float:
-        self.model.eval()
-
-        metric = MeanAveragePrecision(num_classes=len(self.labels), device=self.device)
-        metric.reset()
-
-        current = 0
-
-        with torch.set_grad_enabled(False):
-            for batch in dl_test:
-                imgs  = batch["images"].to(self.device)
-
-                preds_batch = self.predict(imgs)
-                tensor_dict = {k: torch.from_numpy(v) for k, v in preds_batch.items()}
-
-                metric.update([tensor_dict], batch["raw"])
-                
-                current += self.config["train"]["batch_size"]
-                if(current >= count):
-                    break
-
-        res = metric.compute()
-        
-        return  res["mAP"]
-
     def collate(self, batch):
         imgs, boxes, labels = [], [], []
         for img, tgt in batch:
@@ -147,17 +60,6 @@ class ImageObjectDetector:
 
         images = torch.stack(imgs, dim=0)  # [B,C,H,W]
         return {"images": images, "boxes": boxes, "labels": labels}
-    
-    def test_collate(self, batch):
-        imgs, boxes, labels, raw = [], [], [], []
-        for img, tgt in batch:
-            imgs.append(img)
-            boxes.append(torch.as_tensor(tgt["boxes"], dtype=torch.float32))
-            labels.append(torch.as_tensor(tgt["labels"], dtype=torch.float32))
-            raw.append(tgt)
-
-        images = torch.stack(imgs, dim=0)  # [B,C,H,W]
-        return {"images": images, "boxes": boxes, "labels": labels, "raw": raw}
     
     def _make_loader(self, dataset: Dataset, shuffle: bool) -> DataLoader:
             return DataLoader(
@@ -178,7 +80,7 @@ class ImageObjectDetector:
         nc = int(getattr(head, "nc", len(self.labels)))
         for i, (xywh, labels) in enumerate(zip(batch["boxes"], batch["labels"])):
             if(xywh.shape[0] != labels.shape[0]):
-                raise ValueError(f"[prep_batch] sample {i}: boxes({boxes.shape[0]}) != labels({cls.shape[0]})")
+                raise ValueError(f"[prep_batch] sample {i}: boxes({xywh.shape[0]}) != labels({cls.shape[0]})")
 
             if labels.numel() > 0:
                 minc, maxc = int(labels.min().item()), int(labels.max().item())
@@ -269,7 +171,7 @@ class ImageObjectDetector:
                 optimizer.step()
                 cur_loss += float(loss.mean().detach().item())
                 
-                print(f"Step {i}, loss {loss.mean().detach().item()}")
+                # print(f"Step {i}, loss {loss.mean().detach().item()}")
 
             epoch_loss = cur_loss / len(train_loader)
             took = time.time() - t0
@@ -277,7 +179,7 @@ class ImageObjectDetector:
             val_loss = self._eval_loss(model_core, val_loader)
 
             writer.add_scalar("loss/train", epoch_loss, epoch)
-            writer.add_scalar("loss/мфд", val_loss, epoch)
+            writer.add_scalar("loss/val", val_loss, epoch)
             print(f"[Epoch {epoch:03d}/{epochs}] "
                   f"train_loss={epoch_loss:.4f} "
                   f"val_loss={val_loss:.4f}"
