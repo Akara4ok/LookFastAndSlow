@@ -3,9 +3,8 @@ from ultralytics import YOLO
 import torch
 import numpy as np
 from Dataset.SSDLite.test_dataset import TestDataset
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import DataLoader
 from ObjectDetector.map import MeanAveragePrecision
-import torch.nn.functional as F
 
 MAP_CLASS = {
     0: 15,

@@ -2,7 +2,6 @@ import os
 import xml.etree.ElementTree as ET
 from typing import List, Tuple, Dict
 
-import torch
 from torch.utils.data import Dataset
 import numpy as np
 from PIL import Image

@@ -4,7 +4,6 @@ import collections
 import itertools
 
 import torch
-import torch.nn.functional as F
 
 AnchorSizeRange = collections.namedtuple('AnchorSizeRange', ['min', 'max'])
 AnchorSpec = collections.namedtuple('AnchorSpec', ['map_dim', 'stride', 'size_range', 'aspect_ratios'])

@@ -1,12 +1,10 @@
 
 import os
 import json
-import shutil
 import logging
-import hashlib
 import pathlib
 import urllib.request
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict
 import random
 import numpy as np
 import bisect

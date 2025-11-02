@@ -1,7 +1,7 @@
 import time
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 import torch
 from torch.nn.utils import clip_grad_norm_
@@ -10,7 +10,6 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 
 from ObjectDetector.SSDLite.Models.interleaved_classifier import InterleavedClassifier
-from ObjectDetector.SSDLite.loss import SSDLoss
 
 from tqdm import tqdm
 

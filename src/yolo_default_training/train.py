@@ -8,7 +8,9 @@ from pathlib import Path
 from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
 from Dataset.Yolo.YoloDataset import YoloDataset
+from Dataset.Yolo.YoloDataset import YoloDataset
 from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
+from ObjectDetector.Yolo.Models.custom_nc_model import CustomDetect
 from visualize import visulize
 
 
@@ -22,7 +24,7 @@ config['data']['path'] = "Data/VOCdevkit"
 config['train']['batch_size'] = 1
 
 objectDetector = GeneralImageObjectDetector(config)
-objectDetector.load_weights("Model/yolo11x.pt")
+objectDetector.load_weights("Model/yolo11x_test.pt")
 objectDetector.train("Data/YoloVoc/data.yaml")
 
 

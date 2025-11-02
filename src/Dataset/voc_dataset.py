@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import List, Literal
 import hashlib
 
-import torch
 from torch.utils.data import Dataset
 from PIL import Image
 import xml.etree.ElementTree as ET

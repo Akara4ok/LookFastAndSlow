@@ -1,5 +1,4 @@
 from torch.utils.data import Dataset
-from torchvision import transforms
 from Dataset.augmentation import Compose, ResizeNormalize
 
 class TestDataset(Dataset):

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
-import copy
 
 class InvertedResidualBlock(nn.Module):
     def __init__(self, input_size: int, output_size: int, stride: int, expand: int):

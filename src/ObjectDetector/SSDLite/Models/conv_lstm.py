@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class Conv2dLN(nn.Module):
     def __init__(self, in_ch: int, out_ch: int, k: int = 3, bias: bool = True):

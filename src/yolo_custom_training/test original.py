@@ -10,7 +10,7 @@ import numpy as np
 from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
 from Dataset.Yolo.YoloDataset import YoloDataset
-from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
+from ObjectDetector.Yolo.custom_image_object_detector import GeneralImageObjectDetector
 from visualize import visulize
 
 
@@ -53,7 +53,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
-objectDetector = CustomImageObjectDetector(labels, config, map)
+objectDetector = GeneralImageObjectDetector(config, labels, map)
 objectDetector.load_weights("Model/yolo11x.pt")
 
 test_ds = VOCDataset(config['data']['path'], "2007", "test", False)

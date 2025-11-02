@@ -2,12 +2,10 @@ import math
 import os
 import time
 import logging
-from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import torch
 import torch.nn as nn
-import numpy as np
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
@@ -16,40 +14,12 @@ from ultralytics import YOLO
 from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.nn.modules.head import Detect
 
-from ObjectDetector.Yolo.image_object_detector_base import ImageObjectDetectorBase
+from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
 
 
-class CustomImageObjectDetector(ImageObjectDetectorBase):
-    def __init__(self, labels: List[str], config: Dict, map_classes = None, device: torch.device | str | None = None):
-        super().__init__(config, map_classes, device)
-        self.labels = labels
-
-    def load_weights(self, weights_path: str, base: str = None):
-        if base is None:
-            self.model = YOLO(weights_path)
-
-            if self.labels is not None and len(self.labels) != len(self.model.names) and self.map_classes is None:
-                self.model = self.set_num_classes_yolo11(self.model, self.labels)
-            
-            if self.labels is None:
-                self.labels = self.model.names
-
-            self.model.to(self.device)
-
-            logging.info(f"Model loaded to {self.device} from {weights_path}")
-        else:
-            ckpt = torch.load(weights_path, map_location=self.device, weights_only=False)
-            self.model = YOLO(base)
-
-            self.model = self.set_num_classes_yolo11(self.model, self.labels)
-
-            missing, unexpected = self.model.model.load_state_dict(ckpt["state_dict"])
-            if missing or unexpected:
-                print("Missing keys:", missing)
-                print("Unexpected keys:", unexpected)
-
-            self.model.to(self.device).eval()
-            logging.info(f"Model loaded to {self.device} from {weights_path} and adapted from {base}")
+class CustomImageObjectDetector(GeneralImageObjectDetector):
+    def __init__(self, config: Dict, labels: List[str], map_classes = None, device: torch.device | str | None = None):
+        super().__init__(config, labels, map_classes, device)
 
     def collate(self, batch):
         imgs, boxes, labels = [], [], []
@@ -167,7 +137,6 @@ class CustomImageObjectDetector(ImageObjectDetectorBase):
                 loss.mean().backward()
                 total_norm = torch.nn.utils.clip_grad_norm_(model_core.parameters(), max_norm=1000.0)
                 assert not torch.isnan(total_norm)
-                print(f"grad_norm={float(total_norm):.2f}")
                 optimizer.step()
                 cur_loss += float(loss.mean().detach().item())
                 
@@ -187,7 +156,7 @@ class CustomImageObjectDetector(ImageObjectDetectorBase):
             
             if(best_val_loss > val_loss):
                 best_val_loss = val_loss
-                self.save_checkpoint(model_core, self.labels, self.config['model']['path'])
+                self.save_checkpoint(model_core, self.config['model']['path'])
             
                 print(f"  ↳ new best, saved to {self.config['model']['path']}");
 
@@ -205,49 +174,5 @@ class CustomImageObjectDetector(ImageObjectDetectorBase):
             n += 1
         return totals / n
 
-
-    def set_num_classes_yolo11(self, model_module: nn.Module, class_names):
-        new_nc = len(class_names)
-
-        head = None
-        for m in model_module.modules():
-            if isinstance(m, Detect):
-                head = m
-
-        head.nc = new_nc
-
-        def _swap_last_conv_to_nc(seq: nn.Sequential, nc: int):
-            last = seq[-1]
-            new = nn.Conv2d(last.in_channels, nc, kernel_size=1, bias=True)
-            nn.init.zeros_(new.weight)
-            nn.init.constant_(new.bias, -math.log((1 - 0.01) / 0.01))
-            seq[-1] = new
-
-        for i, seq in enumerate(head.cv3):
-            _swap_last_conv_to_nc(seq, new_nc)
-
-        if hasattr(head, "reg_max"):
-            head.no = head.nc + 4 * head.reg_max
-
-        if hasattr(head, "bias_init"):
-            head.bias_init()
-
-        (getattr(model_module, "model", model_module)).names = list(class_names)
-
-        return model_module
-
-    def save_checkpoint(self, net, class_names, path):
-        head = next(m for m in net.modules() if m.__class__.__name__.lower().endswith("detect"))
-        ckpt = {
-            "state_dict": net.state_dict(),
-            "names": list(class_names),
-            "nc": len(class_names),
-            "reg_max": getattr(head, "reg_max", None),
-            "stride": getattr(head, "stride", None),
-            "imgsz": 640,
-            "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "ultralytics_version": getattr(ultralytics, "__version__", None),
-            "torch_version": torch.__version__,
-        }
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        torch.save(ckpt, path)
+    def save_checkpoint(self, net, path):
+        torch.save({"model": net, "state_dict": net.state_dict()}, path)

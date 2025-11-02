@@ -7,22 +7,11 @@ from pathlib import Path
 from PIL import Image
 import numpy as np
 
-from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
-from Dataset.Yolo.YoloDataset import YoloDataset
-from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
-from visualize import visulize
-
+from Dataset.Yolo.CustomImageToYoloSaver import CustomImageToYoloSaver
+from torch.utils.data import random_split
 
 logging.basicConfig(level=logging.INFO)
-
-config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/yolo11x.pt"
-config['model']['img_size'] = 640
-config['train']['epochs'] = 10
-config['data']['path'] = "Data/VOCDevKitTest"
-config['train']['batch_size'] = 1
-
 
 labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "bus", "car", "cat", "chair", "cow",
@@ -30,20 +19,11 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
-objectDetector = CustomImageObjectDetector(labels, config)
-objectDetector.load_weights("Model/vocyolo11x.weights.h5", "Model/yolo11x.pt")
+ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", False)
 
-test_ds = VOCDataset(config['data']['path'], "2007", "test", False)
+test_ratio = 0.2
+test_len = int(len(ds) * test_ratio)
+train_len = len(ds) - test_len
 
-map = objectDetector.test(test_ds, 96)
-print(map)
-
-# test_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
-# for img, tgt in test_ds:
-    # prediction = objectDetector.predict(img)
-    # visulize(img / 255, prediction, labels)
-
-
-
-
-
+train_ds, val_ds = random_split(ds, [train_len, test_len])
+CustomImageToYoloSaver().save(labels, "Data/YoloVoc", train_ds, val_ds)
