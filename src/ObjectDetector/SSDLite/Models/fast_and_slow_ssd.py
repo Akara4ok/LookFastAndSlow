@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import List
-from ObjectDetector.SSDLite.Models.conv_lstm import MultiScaleConvLSTM, Adapter
+from ObjectDetector.Shared.Models.conv_lstm import MultiScaleConvLSTM, Adapter
 from ObjectDetector.SSDLite.Models.ssd_head import SSDHead 
 from ObjectDetector.SSDLite.Models.lite_mobilenet_backbone import LiteMobileNetBackbone 
 

@@ -3,7 +3,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ultralytics import YOLO
-from ObjectDetector.Yolo.Models.test_model import CustomDetect 
+from ObjectDetector.Yolo.Models.custom_nc_model import CustomDetect 
 import ultralytics.nn.tasks as tasks
 
 tasks.CustomDetect = CustomDetect

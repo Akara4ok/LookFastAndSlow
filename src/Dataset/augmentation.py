@@ -282,35 +282,3 @@ class ResizeNormalize():
         tgt["labels"] = torch.tensor(tgt["labels"] + 1, dtype=torch.int64)
 
         return img, tgt
-    
-class ResizeNormalizeYolo():
-    def __init__(self, size: int):
-        self.size = size
-        
-    def __call__(self, img: np.ndarray, tgt: dict):
-        img, tgt = ToNormalizedCenterCoords()(img, tgt)
-        img = (img).astype(np.uint8)
-        img = transforms.ToTensor()(img)
-        img = transforms.Resize((self.size, self.size))(img)
-        
-        tgt["boxes"] = torch.tensor(tgt["boxes"], dtype=torch.float32)
-        tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
-
-        return img, tgt
-    
-class ResizeNormalizeYoloTest():
-    def __init__(self, size: int):
-        self.size = size
-        
-    def __call__(self, img: np.ndarray, tgt: dict):
-        img, tgt = ToNormalizedCoords()(img, tgt)
-        img = (img).astype(np.uint8)
-        img = transforms.ToTensor()(img)
-        img = transforms.Resize((self.size, self.size))(img)
-        
-        tgt["boxes"] = torch.tensor(tgt["boxes"], dtype=torch.float32)
-        tgt["labels"] = torch.tensor(tgt["labels"], dtype=torch.int64)
-
-        return img, tgt
-
-

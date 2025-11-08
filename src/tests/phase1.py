@@ -8,7 +8,7 @@ from ObjectDetector.SSDLite.Models.interleaved_classifier import InterleavedClas
 
 B,T,H,W = 8,3,300,300
 num_classes = 100
-lstm_channels = [576, 1280, 512, 256, 256, 64]
+lstm_channels = [576, 1280, 512, 256, 256]
 
 model = InterleavedClassifier(300, 0.5, 1.0, lstm_channels, num_classes)
 
