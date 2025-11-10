@@ -100,7 +100,7 @@ class VideoProcessor:
 
                 t0 = time.perf_counter()
                 results = self.model.predict(frame)
-                frame = self._draw_boxes(frame, results)
+                # frame = self._draw_boxes(frame, results)
 
                 dt = max(1e-6, time.perf_counter() - t0)
                 fps_inst = 1.0 / dt

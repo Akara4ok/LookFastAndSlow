@@ -14,22 +14,24 @@ from ultralytics import YOLO
 from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.nn.modules.head import Detect
 
-from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
+from ObjectDetector.Yolo.general_video_object_detector import GeneralVideoObjectDetector
 from ObjectDetector.Yolo.Models.yolo_fast_and_slow import YoloFastAndSlow
 
 
-class CustomVideoObjectDetector(GeneralImageObjectDetector):
-    def __init__(self, config: Dict, labels: List[str], device: torch.device | str | None = None):
+class CustomVideoObjectDetector(GeneralVideoObjectDetector):
+    def __init__(self, config: Dict, labels: List[str], inference = False, device: torch.device | str | None = None):
         super().__init__(config, labels, None, device)
         self.model : YoloFastAndSlow = None
+        self.inference = inference
 
     def load_weights(self, weights_path: str, small: str = None, large: str = None):
         if(weights_path is not None):
             logging.info(f"Loading model from: {weights_path}")
-            return super().load_weights(weights_path)
+            super().load_weights(weights_path)
+            self.model.seq = not self.inference
         else:
             logging.info(f"Creating model, large from {large}, small from {small}")
-            self.model = YoloFastAndSlow(self.labels, small, large)
+            self.model = YoloFastAndSlow(self.labels, small, large, )
 
     def collate(self, batch):
         imgs = [img_seq for img_seq, _ in batch] # list of (T,C,H,W)
@@ -137,14 +139,8 @@ class CustomVideoObjectDetector(GeneralImageObjectDetector):
     def _train_loop_pure_torch(self, train_loader, val_loader):
         from types import SimpleNamespace
 
-        # ????
-        # model_core = self.model.model
-        # model_core.to(self.device).train()
-        # model_core.args = SimpleNamespace(box=7.5, cls=0.5, dfl=1.5)
-        # loss_fn = v8DetectionLoss(model_core)
         self.model.args = SimpleNamespace(box=7.5, cls=0.5, dfl=1.5)
         loss_fn = v8DetectionLoss(self.model)
-        # ????
 
         epochs = self.config["train"]["epochs"]
         lr = self.config["lr"]["initial_lr"]
@@ -183,9 +179,13 @@ class CustomVideoObjectDetector(GeneralImageObjectDetector):
                 assert not torch.isnan(total_norm)
                 optimizer.step()
 
-                cur_loss += float(total_loss.detach().item())
+                batch_loss = float(total_loss.detach().item() / len(gt_frames))
+                cur_loss += batch_loss
 
-                # print(f"Step {i}, loss {loss.mean().detach().item()}")
+                if(i % 100 == 0):
+                    print(f"Step {i}, loss {batch_loss}")
+                
+                break
 
             epoch_loss = cur_loss / len(train_loader)
             took = time.time() - t0
@@ -203,7 +203,9 @@ class CustomVideoObjectDetector(GeneralImageObjectDetector):
                 best_val_loss = val_loss
                 self.save_checkpoint(self.model, self.config['model']['path'])
             
-                print(f"  ↳ new best, saved to {self.config['model']['path']}");
+                print(f"  ↳ new best, saved to {self.config['model']['path']}")
+            
+            break
 
         self.model.eval()
 
@@ -235,4 +237,5 @@ class CustomVideoObjectDetector(GeneralImageObjectDetector):
         return totals / max(n, 1)
 
     def save_checkpoint(self, net, path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         torch.save({"model": net, "state_dict": net.state_dict()}, path)

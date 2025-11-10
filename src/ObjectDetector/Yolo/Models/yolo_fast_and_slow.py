@@ -11,10 +11,10 @@ from ultralytics.engine.results import Results
 
 class YoloFastAndSlow(nn.Module):
     def __init__(self, 
-                 labels,
+                 names,
                  weights_small="yolo11n.pt",
                  weights_large="yolo11x.pt",
-                 lstm_hids=[64, 128, 512],
+                 lstm_hids=[64,128,512],
                  device="cuda"):
         super().__init__()
         self.device = device
@@ -42,7 +42,7 @@ class YoloFastAndSlow(nn.Module):
 
         ref_head = small_model.model.model[-1]
 
-        self.detect = Detect(nc=len(labels), ch=lstm_hids).to(device)
+        self.detect = Detect(nc=len(names), ch=lstm_hids).to(device)
 
         if hasattr(ref_head, "stride"):
             self.detect.stride = ref_head.stride.clone()
@@ -52,8 +52,12 @@ class YoloFastAndSlow(nn.Module):
             # Fallback — typical YOLO strides
             self.detect.stride = torch.tensor([8., 16., 32.], device=device)
 
-        self.labels = labels
+        self.names = names
         self.args = None
+        self.seq = True
+
+        self.current_t = 0
+        self.state = None
 
     def _extract_feats(self, full_model, x):
         # full_model is e.g. small_model.model (not sliced!)
@@ -94,6 +98,9 @@ class YoloFastAndSlow(nn.Module):
     
     def choose_backbone_adapter(self, t: int):
         return (self.backbone_small, self.adapter_small) if (t % 2 == 0) else (self.backbone_large, self.adapter_large)
+    
+    def choose_cur_backbone_adapter(self):
+        return (self.backbone_large, self.adapter_large) if (self.current_t % 1 == 0) else (self.backbone_small, self.adapter_small)
 
     @torch.no_grad()
     def postprocess(self, preds: torch.Tensor, imgs: torch.Tensor,
@@ -122,16 +129,43 @@ class YoloFastAndSlow(nn.Module):
                     orig_img=img.permute(1, 2, 0).cpu().numpy(),
                     path=None,
                     boxes=boxes,
-                    names=self.labels,
+                    names=self.names,
                 )
             )
         return results
 
     def forward(self, frames: torch.Tensor):
-        """
-        frames: (B, T, 3, H, W)
-        returns: list length T; each item is Detect head outputs at that timestep
-        """
+        if(self.seq):
+            return self.forward_seq(frames)
+        else:
+            return self.forward_frame(frames)
+        
+    def predict(self, frames: torch.Tensor):
+        return self.forward(frames)
+
+    def forward_frame(self, frames: torch.Tensor):
+        self.eval()
+
+        x_t = frames
+        backbone, adapter = self.choose_cur_backbone_adapter()
+
+        with torch.no_grad():
+            feats = self._extract_feats(backbone, x_t)
+
+        adapted = adapter(feats)
+
+        if self.state is None:
+            self.state = self.temporal.init_states(adapted)
+
+        out_feats, self.state = self.temporal.step(adapted, self.state)
+        
+        y = self.detect.forward(out_feats)
+        
+        self.current_t += 1
+
+        return self.postprocess(y[0], x_t)
+
+    def forward_seq(self, frames: torch.Tensor):
         B, T, C, H, W = frames.shape
         outputs = []
         states = None

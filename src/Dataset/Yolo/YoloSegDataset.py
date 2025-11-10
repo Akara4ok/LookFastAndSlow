@@ -5,6 +5,17 @@ from torch.utils.data import Dataset
 
 from Dataset.augmentation import ToNormalizedCenterCoords, ToNormalizedCoords
 
+class InferenceTransform():
+    def __init__(self, size: int):
+        self.size = size
+        
+    def __call__(self, img: np.ndarray):
+        img = (img).astype(np.uint8)
+        img = transforms.ToTensor()(img)
+        img = transforms.Resize((self.size, self.size))(img)
+        return img
+            
+
 class ResizeNormalizeSeqYolo():
     def __init__(self, size: int, normalize: ToNormalizedCoords):
         self.size = size

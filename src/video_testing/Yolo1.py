@@ -24,8 +24,8 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "diningtable", "dog", "horse", "motorbike", "person",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
-objectDetector = CustomImageObjectDetector(labels, config)
-objectDetector.load_weights("Model/vocyolo11x.weights.h5", "Model/yolo11x.pt")
+objectDetector = CustomImageObjectDetector(config, labels)
+objectDetector.load_weights("Model/yolo11n.pt")
 
 videoProcessor = VideoProcessor(objectDetector)
 videoProcessor.process_video("Data/test.mp4", "Data/output.mp4", True)

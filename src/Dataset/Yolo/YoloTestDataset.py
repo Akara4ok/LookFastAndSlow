@@ -21,7 +21,6 @@ class ResizeNormalizeYoloTest():
         return img, tgt
 
 
-
 class YoloTestDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):
         super().__init__()
