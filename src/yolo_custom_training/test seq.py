@@ -10,9 +10,9 @@ import numpy as np
 from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
 from Dataset.Yolo.YoloDataset import YoloDataset
-from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
-from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
-from visualize import visulize
+from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
+from Dataset.Yolo.YoloSegDataset import YoloSeqDataset
+from ObjectDetector.Yolo.yolo_image_seq_tester import YoloImageSeqTester
 
 
 logging.basicConfig(level=logging.INFO)
@@ -33,21 +33,14 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 
 
 # objectDetector = GeneralImageObjectDetector(config, labels)
-objectDetector = CustomImageObjectDetector(config, labels)
+objectDetector = YoloImageSeqTester(config, labels)
 objectDetector.load_weights("Model/Yolo/yolo11n_voc.pt")
 
-test_ds = VOCDataset(config['data']['path'], "2007", "test", False)
-# test_ds = YoloDataset(train_ds, 640)
+voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
+voc_ds = ImageSeqVideoDataset(voc_ds)
 
-map = objectDetector.test(test_ds, 96)
+map = objectDetector.test(voc_ds, 96)
 print(map)
-
-# test_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
-# for img, tgt in test_ds:
-#     prediction = objectDetector.predict(img)
-#     visulize(img / 255, prediction, labels)
-
-
 
 
 

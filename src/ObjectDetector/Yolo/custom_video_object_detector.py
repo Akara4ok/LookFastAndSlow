@@ -31,7 +31,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
             self.model.seq = not self.inference
         else:
             logging.info(f"Creating model, large from {large}, small from {small}")
-            self.model = YoloFastAndSlow(self.labels, small, large, )
+            self.model = YoloFastAndSlow(self.labels, small, large)
 
     def collate(self, batch):
         imgs = [img_seq for img_seq, _ in batch] # list of (T,C,H,W)
@@ -235,7 +235,3 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
             n += 1
 
         return totals / max(n, 1)
-
-    def save_checkpoint(self, net, path):
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        torch.save({"model": net, "state_dict": net.state_dict()}, path)

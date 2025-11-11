@@ -2,6 +2,7 @@ import logging
 from typing import Dict
 
 import torch
+import os
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
@@ -138,4 +139,8 @@ class GeneralImageObjectDetector:
 
         images = torch.stack(imgs, dim=0)  # [B,C,H,W]
         return {"images": images, "boxes": boxes, "labels": labels, "raw": raw}
+    
+    def save_checkpoint(self, net, path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        torch.save({"model": net, "state_dict": net.state_dict()}, path)
     

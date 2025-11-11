@@ -28,7 +28,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 ]
 
 objectDetector = CustomImageObjectDetector(config, labels)
-objectDetector.load_weights("Model/yolo11x.pt")
+objectDetector.load_weights(None, "Model/yolo11n.pt")
 
 train_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
 train_ds = YoloDataset(train_ds, 640)

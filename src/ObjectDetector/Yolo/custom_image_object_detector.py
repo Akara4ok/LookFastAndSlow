@@ -12,14 +12,20 @@ from torch.utils.tensorboard import SummaryWriter
 import ultralytics
 from ultralytics import YOLO
 from ultralytics.utils.loss import v8DetectionLoss
-from ultralytics.nn.modules.head import Detect
 
+from ObjectDetector.Yolo.Models.yolo_custom_nc import create_yolo_with_custom_nc
 from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
 
 
 class CustomImageObjectDetector(GeneralImageObjectDetector):
     def __init__(self, config: Dict, labels: List[str], map_classes = None, device: torch.device | str | None = None):
         super().__init__(config, labels, map_classes, device)
+
+    def load_weights(self, weights_path: str, base: str = None):
+        if(weights_path is not None):
+            super().load_weights(weights_path)
+        else:
+            self.model = create_yolo_with_custom_nc(base, self.labels, self.map_classes, self.device)
 
     def collate(self, batch):
         imgs, boxes, labels = [], [], []
@@ -173,6 +179,3 @@ class CustomImageObjectDetector(GeneralImageObjectDetector):
             totals += float(loss.mean().detach().item())
             n += 1
         return totals / n
-
-    def save_checkpoint(self, net, path):
-        torch.save({"model": net, "state_dict": net.state_dict()}, path)
