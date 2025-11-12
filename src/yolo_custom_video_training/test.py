@@ -36,5 +36,5 @@ objectDetector.load_weights("Model/yolo11x_custom.pt")
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
 
-map = objectDetector.test(voc_ds, 5)
+map = objectDetector.test(voc_ds, 96)
 print(map)

@@ -34,7 +34,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 
 # objectDetector = GeneralImageObjectDetector(config, labels)
 objectDetector = YoloImageSeqTester(config, labels)
-objectDetector.load_weights("Model/Yolo/yolo11n_voc.pt")
+objectDetector.load_weights("Model/Yolo/yolo11x_voc.pt")
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)

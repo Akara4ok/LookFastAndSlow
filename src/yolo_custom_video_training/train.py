@@ -30,7 +30,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 ]
 
 objectDetector = CustomVideoObjectDetector(config, labels)
-objectDetector.load_weights(None, "Model/yolo11n.pt", "Model/yolo11x.pt")
+objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt")
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
