@@ -9,11 +9,14 @@ from ultralytics.utils.ops import scale_boxes
 from ultralytics.utils.nms import non_max_suppression
 from ultralytics.engine.results import Results
 
+from ObjectDetector.profiler import Profiler
+
 class YoloFastAndSlow(nn.Module):
     def __init__(self, 
                  names,
                  weights_small="yolo11n.pt",
                  weights_large="yolo11x.pt",
+                 use_large_head = False,
                  device="cuda"):
         super().__init__()
         self.device = device
@@ -21,13 +24,8 @@ class YoloFastAndSlow(nn.Module):
         small_model = YOLO(weights_small)
         large_model = YOLO(weights_large)
 
-        self.backbone_small = small_model.model.to(device).eval()   # include neck, exclude Detect
+        self.backbone_small = small_model.model.to(device).eval()
         self.backbone_large = large_model.model.to(device).eval()
-
-        for p in self.backbone_small.parameters():
-            p.requires_grad = False
-        for p in self.backbone_large.parameters():
-            p.requires_grad = False
         
         dummy = torch.zeros(1, 3, 320, 320).to(device)
         with torch.no_grad():
@@ -49,15 +47,14 @@ class YoloFastAndSlow(nn.Module):
 
         self.temporal = MultiScaleConvLSTM(in_chs=detect_in_chs, hid_chs=detect_in_chs).to(device)
 
+        # self.detect = ref_head.to(device)
         self.detect = Detect(nc=len(names), ch=detect_in_chs).to(device)
 
         with torch.no_grad():
-            # Копіюємо stride, anchors, biases, якщо є
             if hasattr(ref_head, "stride"):
                 self.detect.stride = ref_head.stride.clone()
             if hasattr(ref_head, "anchors"):
                 self.detect.anchors = ref_head.anchors.clone()
-            # часткове копіювання state_dict (тільки сумісні параметри)
             state = ref_head.state_dict()
             self.detect.load_state_dict(state, strict=False)
 
@@ -67,6 +64,13 @@ class YoloFastAndSlow(nn.Module):
 
         self.current_t = 0
         self.state = None
+
+        self.profiler = Profiler(10)
+        # self.profiler = None
+
+        for p in self.parameters():
+            p.requires_grad = True
+
 
     def _extract_feats(self, full_model, x):
         # full_model is e.g. small_model.model (not sliced!)
@@ -151,32 +155,62 @@ class YoloFastAndSlow(nn.Module):
         
     def predict(self, frames: torch.Tensor):
         return self.forward(frames)
+    
+    def profile(self, key: str):
+        if(self.profiler is not None):
+            self.profiler.process(key)
+
+    def profiler_iteration_start(self):
+        if(self.profiler is not None):
+            self.profiler.iteration_start()
+
+    def profiler_iteration_end(self):
+        if(self.profiler is not None):
+            self.profiler.iteration_end()
 
     def forward_frame(self, frames: torch.Tensor):
-        self.eval()
+        self.profiler_iteration_start()
 
         x_t = frames
         backbone, adapter, is_large = self.choose_cur_backbone_adapter()
+        self.profile("Backbone choose")
 
         with torch.no_grad():
             feats = self._extract_feats(backbone, x_t)
 
+        self.profile("Extracting features")
+
         adapted = adapter(feats)
+
+        self.profile("Adapter")
 
         if self.state is None:
             self.state = self.temporal.init_states(adapted)
 
+        self.profile("State init")
+
         out_feats, state = self.temporal.step(adapted, self.state)
         if(is_large):
             self.state = state
+
+        self.profile("Temporal")
         
         y = self.detect.forward(out_feats)
+
+        self.profile("Head")
         
         self.current_t += 1
+        res = self.postprocess(y[0], x_t)
 
-        return self.postprocess(y[0], x_t)
+        self.profile("Postprocess")
 
+        self.profiler_iteration_end()
+
+        return res
+    
     def forward_seq(self, frames: torch.Tensor):
+        self.profiler_iteration_start()
+
         B, T, C, H, W = frames.shape
         outputs = []
         states = None
@@ -185,36 +219,56 @@ class YoloFastAndSlow(nn.Module):
             x_t = frames[:, t]
             backbone, adapter, is_large = self.choose_backbone_adapter(t)
 
+            self.profile("Backbone choose")
+
             with torch.no_grad():
                 feats = self._extract_feats(backbone, x_t)
+            
+            self.profile("Extracting features")
 
             adapted = adapter(feats)
+
+            self.profile("Adapter")
 
             if states is None:
                 states = self.temporal.init_states(adapted)
 
-            prev_states = states
+            self.profile("State init")
 
             out_feats, states_after = self.temporal.step(adapted, states)
             if(is_large):
                 states = states_after
-            # out_feats, states = self.temporal.step(adapted, states)
 
-            # if(t == 2):
-            #     print("first")
-
-            #     equal = all(
-            #         torch.allclose(h1, h2, 1e-4) and torch.allclose(c1, c2, 1e-4)
-            #         for (h1, c1), (h2, c2) in zip(prev_states, states)
-            #     )
-            #     print(equal)
+            self.profile("Temporal")
                 
             y = self.detect.forward(out_feats)
+
+            self.profile("Head")
 
             if(self.detect.training):
                 outputs.append(y)
             else:
                 outputs.append(self.postprocess(y[0], x_t))
 
+            self.profile("Postprocess")
+
+        self.profiler_iteration_end()
+
         return outputs
 
+    def freeze(self, key: str, freeze_state: bool):
+        if(key == "backbone"):
+            for p in self.backbone_small.parameters():
+                p.requires_grad = not freeze_state
+            for p in self.backbone_large.parameters():
+                p.requires_grad = not freeze_state
+        elif(key == "temporal"):
+            for p in self.adapter_small.parameters():
+                p.requires_grad = not freeze_state
+            for p in self.adapter_large.parameters():
+                p.requires_grad = not freeze_state
+            for p in self.temporal.parameters():
+                p.requires_grad = not freeze_state
+        elif(key == "head"):
+            for p in self.detect.parameters():
+                p.requires_grad = not freeze_state

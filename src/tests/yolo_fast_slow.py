@@ -18,7 +18,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
-model = YoloFastAndSlow(labels, "Model/yolo11n.pt", "Model/yolo11x.pt", lstm_channels, device=device)
+model = YoloFastAndSlow(labels, "Model/yolo11n.pt", "Model/yolo11x.pt", False, device=device)
 
 x_seq = torch.randn(B,T,3,H,W, device=device)
 

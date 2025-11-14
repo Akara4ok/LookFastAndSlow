@@ -11,6 +11,7 @@ from ultralytics import YOLO
 from ObjectDetector.map import MeanAveragePrecision
 from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
 from Dataset.Yolo.YoloSegDataset import YoloSeqTestDataset, InferenceTransform
+from ObjectDetector.Yolo.Models.yolo_fast_and_slow import YoloFastAndSlow
 
 class GeneralVideoObjectDetector(GeneralImageObjectDetector):
     def __init__(self, config: Dict, labels = None, map_classes = None, device: torch.device | str | None = None):

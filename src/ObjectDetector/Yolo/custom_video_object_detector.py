@@ -24,14 +24,16 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         self.model : YoloFastAndSlow = None
         self.inference = inference
 
-    def load_weights(self, weights_path: str, small: str = None, large: str = None):
+    def load_weights(self, weights_path: str, small: str = None, large: str = None, use_large_head: bool = True):
         if(weights_path is not None):
             logging.info(f"Loading model from: {weights_path}")
             super().load_weights(weights_path)
             self.model.seq = not self.inference
+            if(self.inference):
+                self.model.eval()
         else:
-            logging.info(f"Creating model, large from {large}, small from {small}")
-            self.model = YoloFastAndSlow(self.labels, small, large)
+            logging.info(f"Creating model, large from {large}, small from {small} and use large head: {use_large_head}")
+            self.model = YoloFastAndSlow(self.labels, small, large, use_large_head)
 
     def collate(self, batch):
         imgs = [img_seq for img_seq, _ in batch] # list of (T,C,H,W)
@@ -126,7 +128,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         
         return random_split(full_ds, [train_len, test_len])
 
-    def train(self, train_dataset: Dataset, val_dataset: Dataset = None):
+    def train(self, train_dataset: Dataset, val_dataset: Dataset = None, freeze_dict: dict = None):
         logging.info("Training started")
         if(val_dataset is None):
             train_dataset, val_dataset = self._split_datasets(train_dataset, self.config["data"]["test_percent"])
@@ -134,9 +136,37 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         train_loader = self._make_loader(train_dataset, shuffle=True)
         val_loader = self._make_loader(val_dataset, shuffle=False)
 
-        self._train_loop_pure_torch(train_loader, val_loader)
+        self._train_loop_pure_torch(train_loader, val_loader, freeze_dict)
 
-    def _train_loop_pure_torch(self, train_loader, val_loader):
+    def freeze_handle(self, epoch: int, freeze_dict: dict, optimizer: torch.optim.Optimizer):
+        '''
+        dict: {
+            "key": (freeze_start, freeze_end, lr)
+            key: backbone, temporal, head 
+        }
+        '''
+        if(freeze_dict is None):
+            return optimizer
+        
+        updated = False
+        for key, (start, end) in freeze_dict.items():
+            if epoch == start:
+                self.model.freeze(key, True)
+                updated = True
+                logging.info(f"{key} was freezed on {epoch} epoch")
+            if epoch == end:
+                self.model.freeze(key, False)
+                updated = True
+                logging.info(f"{key} was unfreezed on {epoch} epoch")
+
+        if(not updated):
+            return optimizer
+        
+        optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.config["lr"]["initial_lr"])
+        return optimizer
+
+
+    def _train_loop_pure_torch(self, train_loader, val_loader, freeze_dict):
         from types import SimpleNamespace
 
         self.model.args = SimpleNamespace(box=7.5, cls=0.5, dfl=1.5)
@@ -152,6 +182,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         writer = SummaryWriter(self.config["train"]["tensorboard_path"])
 
         for epoch in range(1, epochs + 1):
+            optimizer = self.freeze_handle(epoch, freeze_dict, optimizer)
             self.model.train()
             cur_loss = 0.0
             t0 = time.time()
@@ -175,11 +206,11 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
                     total_loss += loss.mean()
 
                 total_loss.backward()
-                total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1000.0)
-                assert not torch.isnan(total_norm)
+                # total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1000.0)
+                # assert not torch.isnan(total_norm)
                 optimizer.step()
 
-                batch_loss = float(total_loss.detach().item() / len(gt_frames))
+                batch_loss = float(total_loss.detach().item() / len(gt_frames)) / imgs_seq.shape[0]
                 cur_loss += batch_loss
 
                 if(i % 100 == 0):
@@ -230,7 +261,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
                 loss = out[0] if isinstance(out, (tuple, list)) else out
                 total_loss += loss.mean()
 
-            total_loss = total_loss / len(gt_frames)
+            total_loss = total_loss / len(gt_frames) / imgs_seq.shape[0]
             totals += float(total_loss.detach().item())
             n += 1
 

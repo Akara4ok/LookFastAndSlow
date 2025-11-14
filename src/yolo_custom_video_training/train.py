@@ -16,7 +16,7 @@ from visualize import visulize
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/yolo11x_custom.pt"
+config['model']['path'] = "Model/Yolo/test11x.pt"
 config['train']['epochs'] = 10
 config['data']['path'] = "Data/VOCdevkit"
 config['train']['batch_size'] = 1
@@ -30,10 +30,17 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 ]
 
 objectDetector = CustomVideoObjectDetector(config, labels)
-objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt")
+objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
 voc_ds = YoloSeqDataset(voc_ds, 640)
 
+freeze = {
+    "backbone": (1, None),
+    "temporal": (1, 10),
+    "head": (1, 2)
+}
+
 objectDetector.train(voc_ds)
+# objectDetector.train(voc_ds, freeze_dict=freeze)

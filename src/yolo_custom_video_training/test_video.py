@@ -28,7 +28,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 ]
 
 objectDetector = CustomVideoObjectDetector(config, labels, True)
-objectDetector.load_weights("Model/Yolo/yolo11x_custom.pt")
+objectDetector.load_weights("Model/Yolo/test11x.pt")
 
 videoProcessor = VideoProcessor(objectDetector)
 videoProcessor.process_video("Data/test.mp4", "Data/output.mp4", True)
