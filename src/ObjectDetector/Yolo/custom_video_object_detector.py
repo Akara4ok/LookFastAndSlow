@@ -25,15 +25,15 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         self.inference = inference
 
     def load_weights(self, weights_path: str, small: str = None, large: str = None, use_large_head: bool = True):
+        self.model = YoloFastAndSlow(self.labels, small, large, use_large_head)
+        logging.info(f"Creating model, large from {large}, small from {small} and use large head: {use_large_head}")
         if(weights_path is not None):
-            logging.info(f"Loading model from: {weights_path}")
-            super().load_weights(weights_path)
+            self.model.load_state_dict(torch.load(weights_path))
             self.model.seq = not self.inference
             if(self.inference):
                 self.model.eval()
-        else:
-            logging.info(f"Creating model, large from {large}, small from {small} and use large head: {use_large_head}")
-            self.model = YoloFastAndSlow(self.labels, small, large, use_large_head)
+
+            logging.info(f"Loading model from {weights_path}, inference: {self.inference}")
 
     def collate(self, batch):
         imgs = [img_seq for img_seq, _ in batch] # list of (T,C,H,W)
@@ -149,11 +149,14 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
             return optimizer
         
         updated = False
-        for key, (start, end) in freeze_dict.items():
+        cur_lr = optimizer.param_groups[0]["lr"]
+        for key, (start, end, lr) in freeze_dict.items():
             if epoch == start:
                 self.model.freeze(key, True)
                 updated = True
-                logging.info(f"{key} was freezed on {epoch} epoch")
+                if(lr is not None):
+                    cur_lr = lr
+                logging.info(f"{key} was freezed on {epoch} epoch with {cur_lr:.5f} lr")
             if epoch == end:
                 self.model.freeze(key, False)
                 updated = True
@@ -162,7 +165,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         if(not updated):
             return optimizer
         
-        optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.config["lr"]["initial_lr"])
+        optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.model.parameters()), lr=cur_lr)
         return optimizer
 
 
@@ -219,9 +222,9 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
                 break
 
             epoch_loss = cur_loss / len(train_loader)
-            took = time.time() - t0
-
             val_loss = self._eval_loss(self.model, val_loader)
+
+            took = time.time() - t0
 
             writer.add_scalar("loss/train", epoch_loss, epoch)
             writer.add_scalar("loss/val", val_loss, epoch)
@@ -266,3 +269,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
             n += 1
 
         return totals / max(n, 1)
+
+    def save_checkpoint(self, net, path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        torch.save(net.state_dict(), path)

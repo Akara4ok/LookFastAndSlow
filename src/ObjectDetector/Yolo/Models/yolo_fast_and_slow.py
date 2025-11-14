@@ -47,7 +47,6 @@ class YoloFastAndSlow(nn.Module):
 
         self.temporal = MultiScaleConvLSTM(in_chs=detect_in_chs, hid_chs=detect_in_chs).to(device)
 
-        # self.detect = ref_head.to(device)
         self.detect = Detect(nc=len(names), ch=detect_in_chs).to(device)
 
         with torch.no_grad():

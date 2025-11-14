@@ -37,10 +37,10 @@ voc_ds = ImageSeqVideoDataset(voc_ds)
 voc_ds = YoloSeqDataset(voc_ds, 640)
 
 freeze = {
-    "backbone": (1, None),
-    "temporal": (1, 10),
-    "head": (1, 2)
+    "backbone": (1, None, None),
+    "temporal": (1, 10, None),
+    "head": (1, 1, None)
 }
 
-objectDetector.train(voc_ds)
-# objectDetector.train(voc_ds, freeze_dict=freeze)
+# objectDetector.train(voc_ds)
+objectDetector.train(voc_ds, freeze_dict=freeze)
