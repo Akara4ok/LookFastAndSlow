@@ -154,13 +154,13 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
             if epoch == start:
                 self.model.freeze(key, True)
                 updated = True
-                if(lr is not None):
-                    cur_lr = lr
-                logging.info(f"{key} was freezed on {epoch} epoch with {cur_lr:.5f} lr")
+                logging.info(f"{key} was freezed on {epoch} epoch")
             if epoch == end:
                 self.model.freeze(key, False)
                 updated = True
-                logging.info(f"{key} was unfreezed on {epoch} epoch")
+                if(lr is not None):
+                    cur_lr = lr
+                logging.info(f"{key} was unfreezed on {epoch} epoch with {cur_lr:.5f} lr"))
 
         if(not updated):
             return optimizer
