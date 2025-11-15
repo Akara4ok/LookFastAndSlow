@@ -117,8 +117,60 @@ class Adapter(nn.Module):
         
     def forward(self, feats: torch.Tensor) -> list:
         return [ad(f) for ad, f in zip(self.adapters, feats)]
-
+    
 class MultiScaleConvLSTM(nn.Module):
+    def __init__(self, in_chs: list[int], hid_chs: list[int], k: int = 3, use_levels=None):
+        super().__init__()
+        assert len(in_chs) == len(hid_chs)
+        self.levels = len(in_chs)
+
+        if use_levels is None:
+            use_levels = [False] * (self.levels - 1) + [True]
+        assert len(use_levels) == self.levels
+        self.use_levels = use_levels
+
+        cells = []
+        for in_c, h_c, use in zip(in_chs, hid_chs, use_levels):
+            if use:
+                cells.append(ConvLSTMCell(in_ch=in_c, hid_ch=h_c, k=k))
+            else:
+                cells.append(None)  # цей рівень не має LSTM
+        self.cells = nn.ModuleList([c for c in cells if c is not None])
+        self.level_to_cell_idx = []
+        cur = 0
+        for use in use_levels:
+            if use:
+                self.level_to_cell_idx.append(cur)
+                cur += 1
+            else:
+                self.level_to_cell_idx.append(None)
+
+    def init_states(self, x_feats: list[torch.Tensor]):
+        states = []
+        for lvl, x in enumerate(x_feats):
+            cell_idx = self.level_to_cell_idx[lvl]
+            if cell_idx is None:
+                states.append(None)
+            else:
+                cell = self.cells[cell_idx]
+                states.append(cell.init_state(x))
+        return states
+
+    def step(self, x_feats: list[torch.Tensor], states: list[tuple | None]):
+        outs, new_states = [], []
+        for lvl, (x, st) in enumerate(zip(x_feats, states)):
+            cell_idx = self.level_to_cell_idx[lvl]
+            if cell_idx is None:
+                outs.append(x)
+                new_states.append(None)
+            else:
+                cell = self.cells[cell_idx]
+                h, c = cell(x, st)
+                outs.append(h)
+                new_states.append((h, c))
+        return outs, new_states
+    
+class MultiScaleConvLSTM2(nn.Module):
     def __init__(self, in_chs: list[int], hid_chs: list[int], k: int = 3):
         super().__init__()
         assert len(in_chs) == len(hid_chs)
@@ -141,4 +193,3 @@ class MultiScaleConvLSTM(nn.Module):
             outs.append(h)
             new_states.append((h, c))
         return outs, new_states
-    

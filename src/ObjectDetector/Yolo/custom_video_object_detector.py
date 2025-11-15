@@ -31,7 +31,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
             self.model.load_state_dict(torch.load(weights_path))
             self.model.seq = not self.inference
             if(self.inference):
-                self.model.eval()
+                self.model.put_inference()
 
             logging.info(f"Loading model from {weights_path}, inference: {self.inference}")
 
@@ -160,7 +160,7 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
                 updated = True
                 if(lr is not None):
                     cur_lr = lr
-                logging.info(f"{key} was unfreezed on {epoch} epoch with {cur_lr:.5f} lr"))
+                logging.info(f"{key} was unfreezed on {epoch} epoch with {cur_lr:.5f} lr")
 
         if(not updated):
             return optimizer
