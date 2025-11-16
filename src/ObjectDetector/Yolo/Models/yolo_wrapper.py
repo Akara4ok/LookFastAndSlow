@@ -185,7 +185,7 @@ class YoloWrapper(nn.Module):
 
         return res
         
-    def predict(self, frames: torch.Tensor):
+    def predict(self, frames: torch.Tensor, verbose):
         return self.forward(frames)
     
     def profile(self, key: str):

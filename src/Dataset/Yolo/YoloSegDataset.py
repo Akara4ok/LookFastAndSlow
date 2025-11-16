@@ -1,18 +1,25 @@
 import torch
+import cv2
 import numpy as np
 from torchvision import transforms
 from torch.utils.data import Dataset
 
 from Dataset.augmentation import ToNormalizedCenterCoords, ToNormalizedCoords
 
-class InferenceTransform():
-    def __init__(self, size: int):
+class InferenceTransform:
+    def __init__(self, size):
         self.size = size
-        
-    def __call__(self, img: np.ndarray):
-        img = (img).astype(np.uint8)
-        img = transforms.ToTensor()(img)
-        img = transforms.Resize((self.size, self.size))(img)
+        cv2.setUseOptimized(True)
+        cv2.setNumThreads(8)
+
+    def __call__(self, img):
+        img = cv2.resize(img, (self.size, self.size), interpolation=cv2.INTER_LINEAR)
+
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = torch.from_numpy(img).permute(2, 0, 1)
+        img = img.to("cuda", non_blocking=True)
+        img = img.float().div_(255)
+
         return img
             
 

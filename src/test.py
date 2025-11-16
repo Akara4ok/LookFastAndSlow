@@ -1,47 +1,52 @@
-from ultralytics import YOLO
+import time
 import numpy as np
 import torch
-import time
+from ultralytics import YOLO
 
-# model = YOLO("Model/Yolo/yolo11x_voc.pt")
-model = YOLO("src/ObjectDetector/Yolo/Models/custom_head.yaml", task = "detect")
-model.load("Model/Yolo/yolo11x_voc.pt")
-model_pt = model.model.to("cuda")
+def measure(model, input_data, runs=50):
+    # Warmup
+    for _ in range(5):
+        _ = model(input_data)
+        torch.cuda.synchronize()
 
-layers_to_hook = [16, 19, 22]   # наші виходи
-features = {}
+    times = []
+    for _ in range(runs):
+        torch.cuda.synchronize()
+        t0 = time.time()
+        _ = model(input_data)
+        torch.cuda.synchronize()
+        times.append(time.time() - t0)
 
-# define hook
-def get_hook(name):
-    def hook(module, input, output):
-        features[name] = output
-    return hook
+    avg = sum(times) / len(times)
+    return avg
 
-# register hooks
-hooks = []
-# for idx in layers_to_hook:
-    # h = model_pt.model[idx].register_forward_hook(get_hook(idx))
-    # hooks.append(h)
 
-# run dummy
-x = torch.zeros(1, 3, 640, 640, device="cuda")
+def main():
+    device = "cuda"
 
-for i in range(50):
-    with torch.no_grad():
-        _ = model_pt(x)
+    # Load YOLO model
+    model = YOLO("Model/Yolo/yolo11x_voc.pt")
+    model.to(device)
+    model.eval()
 
-torch.cuda.synchronize()
-t0 = time.time()
-with torch.no_grad():
-    _ = model_pt(x)
-torch.cuda.synchronize()
+    # Create inputs
+    np_img = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
 
-print("Time", time.time() - t0)
+    tensor_img = torch.randint(0, 255, (3, 640, 640), dtype=torch.uint8).to(device)
+    tensor_img = tensor_img.float() / 255.0
 
-# print results
-for k, v in features.items():
-    print(f"Layer {k}: {v.shape}")
+    # Wrap tensor to batch dimension (YOLO expects B,C,H,W)
+    tensor_img = tensor_img.unsqueeze(0)
 
-# remove hooks (важливо!)
-# for h in hooks:
-    # h.remove()
+    # Measure numpy input (YOLO accepts numpy HWC BGR)
+    avg_numpy = measure(model, np_img)
+
+    # Measure tensor input
+    # avg_tensor = measure(model, tensor_img)
+
+    print(f"Avg predict time (numpy input):  {avg_numpy * 1000:.3f} ms")
+    # print(f"Avg predict time (tensor input): {avg_tensor * 1000:.3f} ms")
+
+
+if __name__ == "__main__":
+    main()

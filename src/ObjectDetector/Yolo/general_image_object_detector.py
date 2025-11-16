@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Dict
 
 import torch
@@ -56,11 +57,14 @@ class GeneralImageObjectDetector:
 
     @torch.no_grad()
     def predict(self, frame: np.ndarray) -> Dict[str, np.ndarray]:
+        # t0 = time.time()
         if isinstance(frame, np.ndarray):
             frame = InferenceTransform(self.config["model"]["img_size"])(frame)
             frame = frame.unsqueeze(0)
-            frame = frame.to(self.device)
-        res = self.model.predict(frame, verbose = False)
+        # torch.cuda.synchronize()
+        # print("Preprocess", time.time() - t0)
+        res = self.model.predict(frame, verbose = True)
+        torch.cuda.synchronize()
 
         r0 = res[0]
         if r0.boxes is None or len(r0.boxes) == 0:
