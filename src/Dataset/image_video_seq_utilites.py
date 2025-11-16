@@ -196,10 +196,25 @@ class SequenceSynthesizer:
 
         return frames, targets
 
+    def synthesize_once_2(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:
+        H, W = img.shape[:2]
+
+        frames: List[np.ndarray] = []
+        targets: List[Dict[str, np.ndarray]] = []
+
+        for i in range(self.seq_len):
+            frame = cv2.resize(img, self.out_size, interpolation=cv2.INTER_LINEAR)
+            frames.append(frame)
+            targets.append({"boxes": boxes.astype(np.float32),
+                            "labels": labels})
+
+        return frames, targets
+
+
     def synthesize(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray
                    ) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:
         for attempt in range(4):
-            frames, targets = self.synthesize_once(img, boxes, labels)
+            frames, targets = self.synthesize_once_2(img, boxes, labels)
             if all(t["boxes"].shape[0] > 0 for t in targets):
                 return frames, targets
         return frames, targets

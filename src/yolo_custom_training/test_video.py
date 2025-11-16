@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from ConfigUtils.config import Config
-from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
+from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
 
 
@@ -27,7 +27,7 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
-objectDetector = CustomImageObjectDetector(config, labels)
+objectDetector = GeneralImageObjectDetector(config, labels)
 objectDetector.load_weights("Model/Yolo/yolo11x_voc.pt")
 
 videoProcessor = VideoProcessor(objectDetector)

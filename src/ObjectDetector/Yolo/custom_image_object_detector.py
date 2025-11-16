@@ -13,7 +13,7 @@ import ultralytics
 from ultralytics import YOLO
 from ultralytics.utils.loss import v8DetectionLoss
 
-from ObjectDetector.Yolo.Models.yolo_custom_nc import create_yolo_with_custom_nc
+from ObjectDetector.Yolo.Models.yolo_wrapper import YoloWrapper
 from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
 
 
@@ -21,11 +21,19 @@ class CustomImageObjectDetector(GeneralImageObjectDetector):
     def __init__(self, config: Dict, labels: List[str], map_classes = None, device: torch.device | str | None = None):
         super().__init__(config, labels, map_classes, device)
 
+    # def load_weights(self, weights_path: str, base: str = None):
+    #     if(weights_path is not None):
+    #         super().load_weights(weights_path)
+    #     else:
+    #         self.model = create_yolo_with_custom_nc(base, self.labels, self.map_classes, self.device)
+
     def load_weights(self, weights_path: str, base: str = None):
+        self.model = YoloWrapper(self.labels, base)
+        logging.info(f"Creating model, large from {base}")
+        self.model.eval()
         if(weights_path is not None):
-            super().load_weights(weights_path)
-        else:
-            self.model = create_yolo_with_custom_nc(base, self.labels, self.map_classes, self.device)
+            self.model.load_state_dict(torch.load(weights_path))
+            logging.info(f"Loading model from {weights_path}")
 
     def collate(self, batch):
         imgs, boxes, labels = [], [], []
@@ -179,3 +187,8 @@ class CustomImageObjectDetector(GeneralImageObjectDetector):
             totals += float(loss.mean().detach().item())
             n += 1
         return totals / n
+    
+
+    def save_checkpoint(self, net, path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        torch.save(net.state_dict(), path)

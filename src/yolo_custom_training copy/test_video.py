@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from ConfigUtils.config import Config
-from ObjectDetector.Yolo.custom_video_object_detector import CustomVideoObjectDetector
+from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
 
 
@@ -27,8 +27,8 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
-objectDetector = CustomVideoObjectDetector(config, labels, True)
-objectDetector.load_weights("Model/Yolo/fast_slow_improved.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector = CustomImageObjectDetector(config, labels)
+objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc.pt")
 
 videoProcessor = VideoProcessor(objectDetector)
 videoProcessor.process_video("Data/test.mp4", "Data/output.mp4", True)

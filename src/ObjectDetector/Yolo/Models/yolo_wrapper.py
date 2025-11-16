@@ -5,9 +5,6 @@ from ultralytics import YOLO
 from ultralytics.nn.modules.head import Detect
 from ObjectDetector.Shared.Models.conv_lstm import MultiScaleConvLSTM, Adapter
 
-from ultralytics.utils.ops import scale_boxes
-from ultralytics.utils.nms import non_max_suppression
-
 from ObjectDetector.profiler import Profiler
 
 from torchvision.ops import nms
@@ -26,69 +23,47 @@ class Results:
         self.boxes = Box(xyxyn, conf, cls)
 
 
-class YoloFastAndSlow(nn.Module):
+class YoloWrapper(nn.Module):
     def __init__(self, 
                  names,
-                 weights_small="yolo11n.pt",
-                 weights_large="yolo11x.pt",
-                 use_large_head = False,
+                 model="yolo11n.pt",
                  device="cuda"):
         super().__init__()
         self.device = device
 
-        small_model = YOLO(weights_small)
-        large_model = YOLO(weights_large)
+        model = YOLO(model)
 
-        self.backbone_small = small_model.model.to(device).eval()
-        self.backbone_large = large_model.model.to(device).eval()
+        self.backbone = model.model.to(device).eval()
         
         dummy = torch.zeros(1, 3, 320, 320).to(device)
         with torch.no_grad():
-            feats_s = self._extract_feats(self.backbone_small, dummy)
-            feats_l = self._extract_feats(self.backbone_large, dummy)
+            feats_s = self._extract_feats(self.backbone, dummy)
 
-        in_chs_small = [f.shape[1] for f in feats_s]
-        in_chs_large = [f.shape[1] for f in feats_l]
+        in_chs = [f.shape[1] for f in feats_s]
 
-        ref_head = large_model.model.model[-1]
-        detect_in_chs = []
-        for seq in ref_head.cv2:
-            conv_layers = [m for m in seq.modules() if isinstance(m, torch.nn.Conv2d)]
-            if len(conv_layers) > 0:
-                detect_in_chs.append(conv_layers[0].in_channels)
+        ref_head = model.model.model[-1]
         
-        self.adapter_small = Adapter(in_chs_small, detect_in_chs).to(device)
-        self.adapter_large = Adapter(in_chs_large, detect_in_chs).to(device)
-
-        self.temporal = MultiScaleConvLSTM(in_chs=detect_in_chs, hid_chs=detect_in_chs).to(device)
-
-        self.detect = Detect(nc=len(names), ch=detect_in_chs).to(device)
-
-        with torch.no_grad():
-            if hasattr(ref_head, "stride"):
-                self.detect.stride = ref_head.stride.clone()
-            if hasattr(ref_head, "anchors"):
-                self.detect.anchors = ref_head.anchors.clone()
-            state = ref_head.state_dict()
-            self.detect.load_state_dict(state, strict=False)
+        self.detect = Detect(nc=len(names), ch=in_chs).to(device)
+        # with torch.no_grad():
+        #     if hasattr(ref_head, "stride"):
+        #         self.detect.stride = ref_head.stride.clone()
+        #     if hasattr(ref_head, "anchors"):
+        #         self.detect.anchors = ref_head.anchors.clone()
+        #     state = ref_head.state_dict()
+        #     self.detect.load_state_dict(state, strict=False)
 
         self.names = names
         self.args = None
-        self.seq = True
 
-        self.current_t = 0
-        self.state = None
-
-        # self.profiler = Profiler(10)
-        self.profiler = None
+        self.profiler = Profiler(10)
+        # self.profiler = None
 
         for p in self.parameters():
             p.requires_grad = True
 
     def put_inference(self):
         self.eval()
-        self.backbone_small.fuse()
-        self.backbone_large.fuse()
+        self.backbone.fuse()
 
     def _extract_feats(self, full_model, x):
         # full_model is e.g. small_model.model (not sliced!)
@@ -127,11 +102,6 @@ class YoloFastAndSlow(nn.Module):
 
         return loss_value
     
-    def choose_backbone_adapter(self, t: int):
-        return (self.backbone_large, self.adapter_large, True) if (t % 2 == 0) else (self.backbone_small, self.adapter_small, False)
-    
-    def choose_cur_backbone_adapter(self):
-        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 6 == 0) else (self.backbone_small, self.adapter_small, False)
 
     @torch.no_grad()
     def postprocess(self, preds: torch.Tensor, imgs: torch.Tensor,
@@ -195,10 +165,25 @@ class YoloFastAndSlow(nn.Module):
         return results
 
     def forward(self, frames: torch.Tensor):
-        if(self.seq):
-            return self.forward_seq(frames)
-        else:
-            return self.forward_frame(frames)
+        self.profiler_iteration_start()
+
+        x_t = frames
+        with torch.no_grad():
+            feats = self._extract_feats(self.backbone, x_t)
+
+        self.profile("Extracting features")
+
+        y = self.detect.forward(feats)
+
+        self.profile("Head")
+        
+        res = self.postprocess(y[0], x_t)
+
+        self.profile("Postprocess")
+
+        self.profiler_iteration_end()
+
+        return res
         
     def predict(self, frames: torch.Tensor):
         return self.forward(frames)
@@ -215,94 +200,6 @@ class YoloFastAndSlow(nn.Module):
     def profiler_iteration_end(self):
         if(self.profiler is not None):
             self.profiler.iteration_end()
-
-    def forward_frame(self, frames: torch.Tensor):
-        self.profiler_iteration_start()
-
-        x_t = frames
-        backbone, adapter, is_large = self.choose_cur_backbone_adapter()
-        self.profile("Backbone choose")
-
-        with torch.no_grad():
-            feats = self._extract_feats(backbone, x_t)
-
-        self.profile("Extracting features")
-
-        adapted = adapter(feats)
-
-        self.profile("Adapter")
-
-        if self.state is None:
-            self.state = self.temporal.init_states(adapted)
-
-        self.profile("State init")
-
-        out_feats, state = self.temporal.step(adapted, self.state)
-        if(is_large):
-            self.state = state
-
-        self.profile("Temporal")
-        
-        y = self.detect.forward(out_feats)
-
-        self.profile("Head")
-        
-        self.current_t += 1
-        res = self.postprocess(y[0], x_t)
-
-        self.profile("Postprocess")
-
-        self.profiler_iteration_end()
-
-        return res
-    
-    def forward_seq(self, frames: torch.Tensor):
-        self.profiler_iteration_start()
-
-        B, T, C, H, W = frames.shape
-        outputs = []
-        states = None
-
-        for t in range(T):
-            x_t = frames[:, t]
-            backbone, adapter, is_large = self.choose_backbone_adapter(t)
-
-            self.profile("Backbone choose")
-
-            with torch.no_grad():
-                feats = self._extract_feats(backbone, x_t)
-            
-            self.profile("Extracting features")
-
-            adapted = adapter(feats)
-
-            self.profile("Adapter")
-
-            if states is None:
-                states = self.temporal.init_states(adapted)
-
-            self.profile("State init")
-
-            out_feats, states_after = self.temporal.step(adapted, states)
-            if(is_large):
-                states = states_after
-
-            self.profile("Temporal")
-                
-            y = self.detect.forward(out_feats)
-
-            self.profile("Head")
-
-            if(self.detect.training):
-                outputs.append(y)
-            else:
-                outputs.append(self.postprocess(y[0], x_t))
-
-            self.profile("Postprocess")
-
-        self.profiler_iteration_end()
-
-        return outputs
 
     def freeze(self, key: str, freeze_state: bool):
         if(key == "backbone"):

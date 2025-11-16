@@ -6,19 +6,19 @@ import logging
 from pathlib import Path
 
 from ConfigUtils.config import Config
-from ObjectDetector.Yolo.custom_video_object_detector import CustomVideoObjectDetector
-from ObjectDetector.video_processor import VideoProcessor
+from Dataset.voc_dataset import VOCDataset
+from Dataset.Yolo.YoloDataset import YoloDataset
+from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
+from visualize import visulize
 
 
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/yolo11x_custom.pt"
+config['model']['path'] = "Model/test.pt"
 config['train']['epochs'] = 10
 config['data']['path'] = "Data/VOCdevkit"
 config['train']['batch_size'] = 1
-config['model']['img_size'] = 640
-config["data"]["test_percent"] = 0.01
 
 
 labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
@@ -27,8 +27,10 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
-objectDetector = CustomVideoObjectDetector(config, labels, True)
-objectDetector.load_weights("Model/Yolo/fast_slow_improved.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector = CustomImageObjectDetector(config, labels)
+objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc.pt")
 
-videoProcessor = VideoProcessor(objectDetector)
-videoProcessor.process_video("Data/test.mp4", "Data/output.mp4", True)
+train_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
+train_ds = YoloDataset(train_ds, 640)
+
+objectDetector.train(train_ds)

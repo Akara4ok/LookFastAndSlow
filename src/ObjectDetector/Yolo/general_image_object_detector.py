@@ -10,6 +10,7 @@ from ultralytics import YOLO
 
 from ObjectDetector.map import MeanAveragePrecision
 from Dataset.Yolo.YoloTestDataset import YoloTestDataset
+from Dataset.Yolo.YoloSegDataset import YoloSeqTestDataset, InferenceTransform
 
 class GeneralImageObjectDetector:
     def __init__(self, config: Dict, labels = None, map_classes = None, device: torch.device | str | None = None):
@@ -55,7 +56,11 @@ class GeneralImageObjectDetector:
 
     @torch.no_grad()
     def predict(self, frame: np.ndarray) -> Dict[str, np.ndarray]:
-        res = self.model.predict(frame, verbose=False)
+        if isinstance(frame, np.ndarray):
+            frame = InferenceTransform(self.config["model"]["img_size"])(frame)
+            frame = frame.unsqueeze(0)
+            frame = frame.to(self.device)
+        res = self.model.predict(frame, verbose = False)
 
         r0 = res[0]
         if r0.boxes is None or len(r0.boxes) == 0:
