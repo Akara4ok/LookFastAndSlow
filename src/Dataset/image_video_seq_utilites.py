@@ -131,6 +131,9 @@ class MotionPath:
             new_w = w * (cum_scale)
             new_h = h * (cum_scale)
 
+            new_w = min(new_w, img_w)
+            new_h = min(new_h, img_h)
+
             # apply translation
             nx = cx - 0.5 * new_w + tx
             ny = cy - 0.5 * new_h + ty
@@ -195,11 +198,32 @@ class SequenceSynthesizer:
                             "labels": labels_after})
 
         return frames, targets
+    
+    def dublicate_original(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:
+        H, W = img.shape[:2]
+        outW, outH = self.out_size
+
+        frames: List[np.ndarray] = []
+        targets: List[Dict[str, np.ndarray]] = []
+
+        for i in range(self.seq_len):
+            frame = cv2.resize(img, self.out_size, interpolation=cv2.INTER_LINEAR)
+            boxes_resized = BoxOps.remap_boxes_after_crop_resize(boxes, 
+                                                                 crop_xywh=(0.0, 0.0, float(W), float(H)),  
+                                                                 out_size=(outW, outH)).astype(np.float32)
+
+            frames.append(frame)
+            targets.append({"boxes": boxes_resized.astype(np.float32),
+                            "labels": labels})
+
+        return frames, targets
+
 
     def synthesize(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray
                    ) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:
         for attempt in range(4):
             frames, targets = self.synthesize_once(img, boxes, labels)
+            # frames, targets = self.dublicate_original(img, boxes, labels)
             if all(t["boxes"].shape[0] > 0 for t in targets):
                 return frames, targets
         return frames, targets

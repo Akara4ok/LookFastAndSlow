@@ -8,22 +8,33 @@ from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 
 import numpy as np
 
-voc_ds = VOCDataset("Data/VOCDevKit", "2007", "trainval", use_cache=False)
+voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 ds = ImageSeqVideoDataset(voc_ds)
 
-for seq, tgt in ds:
-    if(len(seq) == 0):
+skip = 0
+for imgs, tgt in ds:
+    if(skip < 5):
+        skip+=1
         continue
-    n = len(seq)
-    fig, axs = plt.subplots(1, n, figsize=(12, 4))
+    n = len(imgs)
+    fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
-    for i, img in enumerate(seq):
-        img_rgb = img[..., ::-1]
-        img_rgb = img_rgb.astype(np.int32)
-        axs[i].imshow(img_rgb)
-        axs[i].axis("off")
-        axs[i].set_title("Image " + str(i))
+    for i, ax in enumerate(axes.flat):
+        boxes = tgt[i]["boxes"] 
+        labels = tgt[i]["labels"]
 
-    print(tgt)
+        for (box, label) in zip(boxes, labels): 
+            xmin, ymin, xmax, ymax = box
+            h = ymax - ymin
+            w = xmax - xmin
+            rect = plt.Rectangle((xmin, ymin), w , h,
+                                fill=False, edgecolor='red', linewidth=2)
+            ax.add_patch(rect)
+            ax.text(xmin, ymin - 5, f"{label}", color='red', fontsize=8)
+        
+        ax.axis("off")
+        ax.set_title("Image " + str(i))
+        ax.imshow(imgs[i] / 255)
+
     plt.show()
 

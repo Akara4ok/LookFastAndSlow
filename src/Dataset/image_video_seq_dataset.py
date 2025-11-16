@@ -7,7 +7,7 @@ class ImageSeqVideoDataset(Dataset):
     def __init__(self,
                  base_dataset: Dataset,
                  seq_len: int = 6,
-                 out_size: int = 300,
+                 out_size: int = 640,
                  max_translate: float = 0.12,
                  rng_seed: int = 42):
         self.base = base_dataset
