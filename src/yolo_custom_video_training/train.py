@@ -30,16 +30,16 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 ]
 
 objectDetector = CustomVideoObjectDetector(config, labels)
-objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc_2.pt", "Model/Yolo/yolo11x_voc_2.pt", True)
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
 voc_ds = YoloSeqDataset(voc_ds, 640)
 
 freeze = {
-    "backbone": (1, None, None),
-    "temporal": (1, 10, None),
-    "head": (1, 1, None)
+    # "backbone": (1, None, None),
+    # "temporal": (1, 10, None),
+    # "head": (1, 1, None)
 }
 
 # objectDetector.train(voc_ds)

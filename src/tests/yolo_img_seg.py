@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import copy
+import numpy as np
 
 from Dataset.voc_dataset import VOCDataset
 from Dataset.Yolo.YoloSegDataset import YoloSeqDataset, YoloSeqTestDataset
@@ -19,13 +20,16 @@ test_ds = YoloSeqTestDataset(copy.deepcopy(voc_ds), 640)
 print("Number of sequences in VOC 2007 trainval:", len(voc_ds))
 for seq_idx in range(1):
     imgs, tgts = voc_ds[seq_idx]
+    imgs_preprocessed, _ = train_ds[seq_idx]
     print(f"Sequence {seq_idx} length: {len(imgs)}")
 
     n = len(imgs)
     fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
     for i, ax in enumerate(axes.flat):
-        ax.imshow(imgs[i] / 255)
+        img_show = imgs_preprocessed[i].permute(1, 2, 0).cpu().numpy()
+        img_show = np.clip(img_show, 0.0, 1.0)
+        ax.imshow(img_show)
         ax.axis("off")
         ax.set_title("Image " + str(i))
 

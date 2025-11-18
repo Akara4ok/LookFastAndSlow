@@ -1,47 +1,19 @@
-from ultralytics import YOLO
-import numpy as np
 import torch
-import time
+import os
+from ObjectDetector.Yolo.Models.yolo_fast_and_slow import YoloFastAndSlow
+from ObjectDetector.Shared.Models.conv_lstm import MultiScaleConvLSTM, Adapter, ConvLSTMCell, Conv2dLN
 
-# model = YOLO("Model/Yolo/yolo11x_voc.pt")
-model = YOLO("src/ObjectDetector/Yolo/Models/custom_head.yaml", task = "detect")
-model.load("Model/Yolo/yolo11x_voc.pt")
-model_pt = model.model.to("cuda")
+net = torch.load("Model/Yolo/fast_slow_improved_fixed_2.pt", weights_only=False)
 
-layers_to_hook = [16, 19, 22]   # наші виходи
-features = {}
+labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
+    "bus", "car", "cat", "chair", "cow",
+    "diningtable", "dog", "horse", "motorbike", "person",
+    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
+]
 
-# define hook
-def get_hook(name):
-    def hook(module, input, output):
-        features[name] = output
-    return hook
+model = YoloFastAndSlow(labels, "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt")
+model.load_state_dict(net["state_dict"])
 
-# register hooks
-hooks = []
-# for idx in layers_to_hook:
-    # h = model_pt.model[idx].register_forward_hook(get_hook(idx))
-    # hooks.append(h)
-
-# run dummy
-x = torch.zeros(1, 3, 640, 640, device="cuda")
-
-for i in range(50):
-    with torch.no_grad():
-        _ = model_pt(x)
-
-torch.cuda.synchronize()
-t0 = time.time()
-with torch.no_grad():
-    _ = model_pt(x)
-torch.cuda.synchronize()
-
-print("Time", time.time() - t0)
-
-# print results
-for k, v in features.items():
-    print(f"Layer {k}: {v.shape}")
-
-# remove hooks (важливо!)
-# for h in hooks:
-    # h.remove()
+path = "Model/Yolo/fast_slow_improved_fixed.pt"
+os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+torch.save(model.state_dict(), path)

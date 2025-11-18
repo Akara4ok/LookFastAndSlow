@@ -38,8 +38,7 @@ class BoxOps:
         return inter
 
     @staticmethod
-    def crop_and_resize(img: np.ndarray, crop_xywh: Tuple[float, float, float, float],
-                        out_size: Tuple[int, int]) -> np.ndarray:
+    def crop(img: np.ndarray, crop_xywh: Tuple[float, float, float, float]) -> np.ndarray:
         x, y, w, h = crop_xywh
         x0 = int(round(x))
         y0 = int(round(y))
@@ -47,11 +46,7 @@ class BoxOps:
         y1 = int(round(y + h))
         x0, y0 = max(0, x0), max(0, y0)
         x1, y1 = min(img.shape[1], x1), min(img.shape[0], y1)
-        crop = img[y0:y1, x0:x1]
-        outW, outH = out_size
-        if crop.size == 0:
-            return np.zeros((outH, outW, 3), dtype=img.dtype)
-        return cv2.resize(crop, (outW, outH), interpolation=cv2.INTER_LINEAR)
+        return img[y0:y1, x0:x1]
 
     @staticmethod
     def remap_boxes_after_crop_resize(
@@ -78,6 +73,63 @@ class BoxOps:
         shifted[:, [0, 2]] *= sx
         shifted[:, [1, 3]] *= sy
         return shifted
+    
+    @staticmethod
+    def letterbox(img: np.ndarray, new_shape: tuple = (640, 640), color: tuple = (114, 114, 114)):
+        h, w = img.shape[:2]
+        new_w, new_h = new_shape
+
+        # scale while keeping aspect ratio
+        r = min(new_w / w, new_h / h)
+        resize_w, resize_h = int(w * r), int(h * r)
+
+        resized = cv2.resize(img, (resize_w, resize_h), interpolation=cv2.INTER_LINEAR)
+
+        pad_w = new_w - resize_w
+        pad_h = new_h - resize_h
+        dw = pad_w // 2
+        dh = pad_h // 2
+
+        result = cv2.copyMakeBorder(
+            resized, dh, pad_h - dh, dw, pad_w - dw,
+            cv2.BORDER_CONSTANT, value=color
+        )
+
+        return result, r, (dw, dh)
+    
+    @staticmethod
+    def remap_boxes_to_crop(boxes_xyxy: tuple, crop_xywh: tuple):
+        if boxes_xyxy.size == 0:
+            return boxes_xyxy.copy()
+
+        x, y, w, h = crop_xywh
+        shifted = boxes_xyxy.copy()
+
+        shifted[:, [0, 2]] -= x
+        shifted[:, [1, 3]] -= y
+
+        shifted[:, [0, 2]] = np.clip(shifted[:, [0, 2]], 0, w)
+        shifted[:, [1, 3]] = np.clip(shifted[:, [1, 3]], 0, h)
+
+        return shifted
+    
+    @staticmethod
+    def remap_boxes_letterbox(boxes: np.ndarray, r: float, pad: tuple):
+        if boxes.size == 0:
+            return boxes.copy()
+
+        dw, dh = pad
+        new_boxes = boxes.copy()
+
+        # scale
+        new_boxes[:, [0, 2]] *= r
+        new_boxes[:, [1, 3]] *= r
+
+        # add padding
+        new_boxes[:, [0, 2]] += dw
+        new_boxes[:, [1, 3]] += dh
+
+        return new_boxes
 
 class MotionPath:
     def __init__(self, rng: random.Random):
@@ -169,55 +221,55 @@ class SequenceSynthesizer:
 
     def synthesize_once(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:
         H, W = img.shape[:2]
-        path_builder = MotionPath(self.rng)
-        crops = path_builder.build(W, H, boxes, self.seq_len, self.max_translate)
 
-        frames: List[np.ndarray] = []
-        targets: List[Dict[str, np.ndarray]] = []
+        path = MotionPath(self.rng)
+        crops = path.build(W, H, boxes, self.seq_len, self.max_translate)
+
+        frames = []
+        targets = []
         outW, outH = self.out_size
 
         for (x, y, w, h) in crops:
-            # Remap boxes to crop coords and then to output size
-            boxes_after = BoxOps.remap_boxes_after_crop_resize(boxes, (x, y, w, h), (outW, outH))
-            # Determine visibility by intersecting original boxes with crop (pre-scale)
-            inter_in_crop = BoxOps.intersect_xyxy(boxes, np.array([x, y, x + w, y + h], dtype=np.float32))
+            crop_img = BoxOps.crop(img, (x, y, w, h))
+            frame_lb, r, pad = BoxOps.letterbox(crop_img, (outW, outH))
+            boxes_in_crop = BoxOps.remap_boxes_to_crop(boxes, (x, y, w, h))
+
+            # 4) determine which boxes visible inside crop
+            inter_in_crop = BoxOps.intersect_xyxy(
+                boxes, np.array([x, y, x + w, y + h], dtype=np.float32)
+            )
             keep = self._visible_filter(boxes, inter_in_crop)
 
-            boxes_after = boxes_after[keep]
+            boxes_in_crop = boxes_in_crop[keep]
             labels_after = labels[keep] if labels.size > 0 else labels
 
-            # If we must keep at least 1 box per frame and it's empty, we can optionally
-            # recentre crop to anchor object (but better to rely on MotionConfig(anchor=random_box))
-            if boxes_after.shape[0] == 0:
-                # Leave empty for now; caller decides if whole sequence is acceptable.
-                pass
+            # 5) crop coords → letterbox coords
+            boxes_final = BoxOps.remap_boxes_letterbox(boxes_in_crop, r, pad)
 
-            frame = BoxOps.crop_and_resize(img, (x, y, w, h), (outW, outH))
-            frames.append(frame)
-            targets.append({"boxes": boxes_after.astype(np.float32),
-                            "labels": labels_after})
+            frames.append(frame_lb)
+            targets.append({
+                "boxes": boxes_final.astype(np.float32),
+                "labels": labels_after
+            })
 
         return frames, targets
     
-    def dublicate_original(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:
-        H, W = img.shape[:2]
+    def dublicate_original(self, img, boxes, labels):
         outW, outH = self.out_size
+        frames = []
+        targets = []
 
-        frames: List[np.ndarray] = []
-        targets: List[Dict[str, np.ndarray]] = []
+        img_lb, r, pad = BoxOps.letterbox(img, (outW, outH))
+        boxes_lb = BoxOps.remap_boxes_letterbox(boxes, r, pad)
 
-        for i in range(self.seq_len):
-            frame = cv2.resize(img, self.out_size, interpolation=cv2.INTER_LINEAR)
-            boxes_resized = BoxOps.remap_boxes_after_crop_resize(boxes, 
-                                                                 crop_xywh=(0.0, 0.0, float(W), float(H)),  
-                                                                 out_size=(outW, outH)).astype(np.float32)
-
-            frames.append(frame)
-            targets.append({"boxes": boxes_resized.astype(np.float32),
-                            "labels": labels})
+        for _ in range(self.seq_len):
+            frames.append(img_lb)
+            targets.append({
+                "boxes": boxes_lb.astype(np.float32),
+                "labels": labels
+            })
 
         return frames, targets
-
 
     def synthesize(self, img: np.ndarray, boxes: np.ndarray, labels: np.ndarray
                    ) -> Tuple[List[np.ndarray], List[Dict[str, np.ndarray]]]:

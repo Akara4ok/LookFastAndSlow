@@ -282,3 +282,66 @@ class ResizeNormalize():
         tgt["labels"] = torch.tensor(tgt["labels"] + 1, dtype=torch.int64)
 
         return img, tgt
+
+class Letterbox:
+    def __init__(self, size: int, color=(114, 114, 114)):
+        self.size = size
+        self.color = color
+
+    def __call__(self, img: np.ndarray):
+        h0, w0 = img.shape[:2]
+        new_w, new_h = self.size, self.size
+
+        r = min(new_w / w0, new_h / h0)
+        resize_w, resize_h = int(w0 * r), int(h0 * r)
+
+        img_resized = cv2.resize(img, (resize_w, resize_h), interpolation=cv2.INTER_LINEAR)
+
+        pad_w = new_w - resize_w
+        pad_h = new_h - resize_h
+        dw = pad_w // 2
+        dh = pad_h // 2
+
+        img_padded = cv2.copyMakeBorder(
+            img_resized,
+            dh, pad_h - dh, dw, pad_w - dw,
+            borderType=cv2.BORDER_CONSTANT,
+            value=self.color
+        )
+
+        return img_padded, r, (dw, dh)
+
+class LetterboxRemapBox:
+    def __init__(self, return_xyxy: bool = True):
+        self.return_xyxy = return_xyxy
+
+    def __call__(self, boxes_xyxy: np.ndarray,
+                 r: float,
+                 pad: tuple,
+                 out_size: int):
+
+        if boxes_xyxy.size == 0:
+            return boxes_xyxy
+
+        dw, dh = pad
+
+        boxes = boxes_xyxy.copy().astype(np.float32)
+        boxes[:, [0, 2]] *= r
+        boxes[:, [1, 3]] *= r
+
+        boxes[:, [0, 2]] += dw
+        boxes[:, [1, 3]] += dh
+
+        boxes[:, [0, 2]] /= out_size
+        boxes[:, [1, 3]] /= out_size
+
+        if self.return_xyxy:
+            return boxes
+
+        cx = (boxes[:, 0] + boxes[:, 2]) / 2
+        cy = (boxes[:, 1] + boxes[:, 3]) / 2
+        w  = boxes[:, 2] - boxes[:, 0]
+        h  = boxes[:, 3] - boxes[:, 1]
+
+        return np.stack([cx, cy, w, h], axis=1)
+
