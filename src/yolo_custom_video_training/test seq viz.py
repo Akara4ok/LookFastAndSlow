@@ -35,9 +35,9 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 
 
 objectDetector = CustomVideoObjectDetector(config, labels, True)
-objectDetector.load_weights("Model/Yolo/fast_slow_improved.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector.load_weights("Model/Yolo/fast_slow_2.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
 
-voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
+voc_ds = VOCDataset("Data/TestSeq", "2007", "test", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
 ds = YoloSeqTestDataset(voc_ds, config["model"]["img_size"])
 
@@ -46,7 +46,6 @@ for j, (imgs, tgt) in enumerate(voc_ds):
     fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
     img_batch, _ = ds[j]
-    print(img_batch.shape)
     predicts = objectDetector.predict_seq(torch.unsqueeze(img_batch.to("cuda"), 0))
 
     for i, ax in enumerate(axes.flat):

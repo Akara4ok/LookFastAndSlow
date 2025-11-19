@@ -44,7 +44,7 @@ class VOCDataset(Dataset):
         self.year = str(year)
         self.split = split
 
-        self._download_if_needed()
+        # self._download_if_needed()
         self.image_ids = self._read_split_file()
 
         self.img_dir = self.root / f"VOC{self.year}" / "JPEGImages"

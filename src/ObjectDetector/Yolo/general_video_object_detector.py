@@ -1,5 +1,6 @@
 import logging
 from typing import Dict
+import time
 
 import torch
 import torch.nn as nn
@@ -17,7 +18,10 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
     def __init__(self, config: Dict, labels = None, map_classes = None, device: torch.device | str | None = None):
         super().__init__(config, labels, map_classes, device)
         self.model: nn.Module = None
+        self.inference_transform = InferenceTransform(self.config["model"]["img_size"])
 
+    def set_nms_params(self, iou: float, conf: float):
+        self.model.set_nms_params(iou, conf)
 
     def load_weights(self, weights_path: str):
         full_model = torch.load(weights_path, map_location="cuda", weights_only=False)
@@ -25,7 +29,38 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
         self.model.load_state_dict(full_model["state_dict"])
         self.model.eval().to("cuda")
 
-    def postprocess_single(self, res: np.ndarray) -> list:
+    def remap_from_letterbox(self,
+                         boxes_xyxy: np.ndarray,
+                         original_size: tuple[int, int],
+                         padded_size: int,
+                         scale: float,
+                         pad: tuple[int, int]):
+        h0, w0 = original_size
+        pad_left, pad_top = pad
+
+        inv_scale_w = 1.0 / (scale * w0)
+        inv_scale_h = 1.0 / (scale * h0)
+        pad_left_norm = pad_left / padded_size
+        pad_top_norm  = pad_top  / padded_size
+
+        out = boxes_xyxy
+
+        out[:, [0, 2]] = (out[:, [0, 2]] - pad_left_norm) * padded_size * inv_scale_w
+
+        out[:, [1, 3]] = (out[:, [1, 3]] - pad_top_norm) * padded_size * inv_scale_h
+
+        np.clip(out, 0.0, 1.0, out=out)
+
+        return out.astype(np.float32)
+
+
+    def postprocess_single(
+        self,
+        res: np.ndarray,
+        return_boxes_to_original: bool = False,
+        original_size: tuple[int, int] | None = None,
+        letterbox_params=None,
+    ) -> dict:
         r0 = res[0]
         if r0.boxes is None or len(r0.boxes) == 0:
             return {"boxes": np.zeros((0, 4), np.float32), "scores": np.zeros((0,), np.float32), "classes": np.zeros((0,), np.int64)}
@@ -33,17 +68,28 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
         boxes_xyxy = r0.boxes.xyxyn.detach().cpu().numpy().astype(np.float32)
         scores = r0.boxes.conf.detach().cpu().numpy().astype(np.float32)
         classes = r0.boxes.cls.detach().cpu().numpy().astype(np.int64)
+
+        if return_boxes_to_original:
+            boxes_xyxy = self.remap_from_letterbox(
+                boxes_xyxy,
+                original_size=original_size,
+                padded_size=self.config["model"]["img_size"],
+                scale=letterbox_params["scale"],
+                pad=letterbox_params["pad"],
+            )
+
         predicted = {"boxes": boxes_xyxy, "scores": scores, "classes": classes}
         return self.map_result_classes(predicted)
 
     @torch.no_grad()
     def predict(self, frame: np.ndarray) -> Dict[str, np.ndarray]:
+        original_size = frame.shape[:2]
+        lb_params = {}
         if isinstance(frame, np.ndarray):
-            frame = InferenceTransform(self.config["model"]["img_size"])(frame)
+            frame, lb_params = self.inference_transform(frame)
             frame = frame.unsqueeze(0)
-        frame = frame.to(self.device)
         res = self.model.predict(frame)
-        return self.postprocess_single(res)
+        return self.postprocess_single(res, True, original_size, lb_params)
     
     @torch.no_grad()
     def predict_seq(self, batch: np.ndarray) -> list[dict]:

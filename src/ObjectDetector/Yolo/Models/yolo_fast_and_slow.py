@@ -85,6 +85,13 @@ class YoloFastAndSlow(nn.Module):
         for p in self.parameters():
             p.requires_grad = True
 
+        self.iou_threshold = 0.45
+        self.conf_threshold = 0.25
+
+    def set_nms_params(self, iou: float, conf: float):
+        self.iou_threshold = iou
+        self.conf_threshold = conf
+
     def put_inference(self):
         self.eval()
         self.backbone_small.fuse()
@@ -131,11 +138,10 @@ class YoloFastAndSlow(nn.Module):
         return (self.backbone_large, self.adapter_large, True) if (t % 2 == 0) else (self.backbone_small, self.adapter_small, False)
     
     def choose_cur_backbone_adapter(self):
-        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 1 == 0) else (self.backbone_small, self.adapter_small, False)
+        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 10 == 0) else (self.backbone_small, self.adapter_small, False)
 
     @torch.no_grad()
-    def postprocess(self, preds: torch.Tensor, imgs: torch.Tensor,
-                    conf_thres: float = 0.25, iou_thres: float = 0.45):
+    def postprocess(self, preds: torch.Tensor, imgs: torch.Tensor):
         # self.profiler_iteration_start()
 
         device = self.device
@@ -156,7 +162,7 @@ class YoloFastAndSlow(nn.Module):
             conf, cls = class_logits.max(1) # по класах
 
             # self.profile("before stuff")
-            idx = torch.where(conf > conf_thres)[0]
+            idx = torch.where(conf > self.conf_threshold)[0]
             # self.profile("some stuff")
 
             boxes = boxes.index_select(0, idx)
@@ -176,7 +182,7 @@ class YoloFastAndSlow(nn.Module):
 
             # self.profile("cycle preprocess")
 
-            keep = nms(xy, conf, iou_thres)
+            keep = nms(xy, conf, self.iou_threshold)
 
             # self.profile("nms")
 
@@ -195,7 +201,7 @@ class YoloFastAndSlow(nn.Module):
         return results
 
     def forward(self, frames: torch.Tensor):
-        if(self.seq):
+        if(len(frames.shape) == 5):
             return self.forward_seq(frames)
         else:
             return self.forward_frame(frames)

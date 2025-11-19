@@ -28,7 +28,8 @@ labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
 ]
 
 objectDetector = CustomVideoObjectDetector(config, labels, True)
-objectDetector.load_weights("Model/Yolo/fast_slow_improved_fixed.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector.load_weights("Model/Yolo/fast_slow_2.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector.set_nms_params(0.45, 0.4)
 
 videoProcessor = VideoProcessor(objectDetector)
 videoProcessor.process_video("Data/test.mp4", "Data/output.mp4", True)
