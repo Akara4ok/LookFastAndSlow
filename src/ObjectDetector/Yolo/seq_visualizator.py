@@ -30,10 +30,9 @@ class SequenceVisualizator():
         self.labels = self.objectDetector.labels
 
     def scale_box(self, box: tuple, img: np.ndarray) -> tuple:
-        xmin, ymin, xmax, ymax = box
-                    
-        img_w = img.shape[1]
-        img_h = img.shape[0]
+        xmin, ymin, xmax, ymax = box                    
+        img_w = img.shape[2]
+        img_h = img.shape[1]
 
         xmin *= img_w
         ymin *= img_h
@@ -53,7 +52,7 @@ class SequenceVisualizator():
 
     def calculate_map(self, predicts: list, true_tgts: list) -> float:
         metric = MeanAveragePrecision(num_classes=len(self.labels), device=self.device)
-        for preds, raw in zip(predicts, true_tgts):
+        for i, (preds, raw) in enumerate(zip(predicts, true_tgts)):
             tensor_dict = {k: torch.from_numpy(v) for k, v in preds.items()}
             metric.update([tensor_dict], [raw])
 
@@ -65,28 +64,26 @@ class SequenceVisualizator():
         ds = ImageSeqVideoDataset(ds)
         test_ds = YoloSeqTestDataset(ds, self.config["model"]["img_size"])
 
-        for j, (imgs, tgt) in enumerate(ds):
-            n = len(imgs)
+        for j, (img_batch, true_tgts) in enumerate(test_ds):
             fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
-            img_batch, true_tgts = test_ds[j]
             predicts = self.objectDetector.predict_seq(torch.unsqueeze(img_batch.to("cuda"), 0))
 
             for i, ax in enumerate(axes.flat):
-                boxes = tgt[i]["boxes"] 
-                labels = tgt[i]["labels"]
+                boxes = true_tgts[i]["boxes"].cpu().numpy()
+                labels = true_tgts[i]["labels"].cpu().numpy()
 
-                for (box, label) in zip(boxes, labels): 
-                    self.visualize_box(ax, box, label, 'red')
+                for (box, label) in zip(boxes, labels):
+                    self.visualize_box(ax, self.scale_box(box, img_batch[0]), label, 'red')
 
                 for (box, label) in zip(predicts[i]["boxes"], predicts[i]["classes"]):
-                    self.visualize_box(ax, self.scale_box(box, imgs[0]), label, 'green')
+                    self.visualize_box(ax, self.scale_box(box, img_batch[0]), label, 'green')
                 
                 ax.axis("off")
                 ax.set_title("Image " + str(i))
 
-                # ax.imshow(img_batch[i].permute(1, 2, 0).cpu().numpy())
-                ax.imshow(imgs[i] / 255)
+                ax.imshow(img_batch[i].permute(1, 2, 0).cpu().numpy())
+                # ax.imshow(imgs[i] / 255)
 
             print("Weighted map on image:", self.calculate_map(predicts, true_tgts))
 
