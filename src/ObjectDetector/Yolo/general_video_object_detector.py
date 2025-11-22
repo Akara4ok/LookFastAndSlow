@@ -129,9 +129,9 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
 
                 preds_batch = self.predict_seq(imgs)
 
-                for preds, raw in zip(preds_batch, batch["raw"]):
+                for preds, raw in zip(preds_batch, batch["raw"][0]):
                     tensor_dict = {k: torch.from_numpy(v) for k, v in preds.items()}
-                    metric.update([tensor_dict], raw)
+                    metric.update([tensor_dict], [raw])
                 
                 current += self.config["train"]["batch_size"]
                 if(current >= count):
@@ -139,6 +139,7 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
 
         res = metric.compute()
         
+        # return  res["weighted_mAP"]
         return  res["mAP"]
     
     def test_collate(self, batch):

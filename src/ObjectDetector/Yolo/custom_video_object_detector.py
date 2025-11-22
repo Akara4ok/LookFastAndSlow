@@ -24,9 +24,9 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
         self.model : YoloFastAndSlow = None
         self.inference = inference
 
-    def load_weights(self, weights_path: str, small: str = None, large: str = None, use_large_head: bool = True):
-        self.model = YoloFastAndSlow(self.labels, small, large, use_large_head)
-        logging.info(f"Creating model, large from {large}, small from {small} and use large head: {use_large_head}")
+    def load_weights(self, weights_path: str, small: str = None, large: str = None):
+        self.model = YoloFastAndSlow(self.labels, small, large)
+        logging.info(f"Creating model, large from {large}, small from {small}")
         if(weights_path is not None):
             self.model.load_state_dict(torch.load(weights_path))
             self.model.seq = not self.inference

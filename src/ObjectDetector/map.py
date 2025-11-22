@@ -58,9 +58,10 @@ class MeanAveragePrecision:
             })
 
     def compute(self) -> Dict[str, float]:
-        aps = []
-        
-        for cls in range(1, self.C):
+        aps = {}
+        gts_per_class = {}
+
+        for cls in range(self.C):
             det_cls = []
             gt_per_img = {}
 
@@ -78,11 +79,12 @@ class MeanAveragePrecision:
                 }
                 total_gt += mask.sum()
 
+            gts_per_class[cls] = total_gt
             if total_gt == 0:
                 continue
 
             if len(det_cls) == 0:
-                aps.append(0.0)
+                aps[cls] = 0.0
                 continue
 
             
@@ -93,7 +95,7 @@ class MeanAveragePrecision:
 
             for i, (img_id, score, box_p) in enumerate(det_cls):
                 g = gt_per_img[img_id]
-                if g is None or g["boxes"].size == 0:
+                if g["boxes"].size == 0:
                     fp[i] = 1
                     continue
                 ious = _box_iou(box_p[None, :], g["boxes"])[0]
@@ -110,22 +112,36 @@ class MeanAveragePrecision:
             recalls = tp_cum / total_gt
             precis = tp_cum / (tp_cum + fp_cum + 1e-6)
             ap = _ap_from_pr(recalls, precis)
-            aps.append(ap)
-            # TP = int(tp.sum()) if len(aps) else 0
-            # FP = int(fp.sum()) if len(aps) else 0
-            # print("================")
-            # print("Class", cls)
-            # print("GT", total_gt)
-            # print("TP", TP)
-            # print("FP", int(fp.sum()) if len(aps) else 0)
-            # print("FN", max(total_gt - TP, 0))
-            # print("Recall", TP / total_gt if total_gt > 0 else 0.0)
-            # print("Precision ", TP / (TP + FP) if (TP + FP) > 0 else 0.0)
-            # print("ap", ap)
+            aps[cls] = ap
+
+            TP = int(tp.sum()) if len(aps) else 0
+            FP = int(fp.sum()) if len(aps) else 0
+            print("================")
+            print("Class", cls)
+            print("GT", total_gt)
+            print("TP", TP)
+            print("FP", int(fp.sum()) if len(aps) else 0)
+            print("FN", max(total_gt - TP, 0))
+            print("Recall", TP / total_gt if total_gt > 0 else 0.0)
+            print("Precision ", TP / (TP + FP) if (TP + FP) > 0 else 0.0)
+            print("ap", ap)
             
-        mAP = float(np.mean(aps)) if aps else 0.0
-        out = {"mAP": mAP}
-        for c, ap in enumerate(aps, 1):
-            out[f"AP_{c}"] = ap
-            # qwe
+        if len(aps) > 0:
+            mAP = float(np.mean(list(aps.values())))
+        else:
+            mAP = 0.0
+
+        total_gt_all = sum(gts_per_class.values())
+        if total_gt_all > 0:
+            weighted_mAP = sum(
+                aps.get(c, 0.0) * (gts_per_class[c] / total_gt_all)
+                for c in range(self.C)
+            )
+        else:
+            weighted_mAP = 0.0
+
+        out = {"mAP": mAP, "weighted_mAP": weighted_mAP}
+        for c in range(self.C):
+            if c in aps:
+                out[f"AP_{c}"] = aps[c]
         return out

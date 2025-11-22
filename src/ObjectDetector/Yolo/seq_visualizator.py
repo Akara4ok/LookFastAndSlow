@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from ObjectDetector.Yolo.general_video_object_detector import GeneralVideoObjectDetector
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 from Dataset.Yolo.YoloSegDataset import YoloSeqTestDataset
+from ObjectDetector.map import MeanAveragePrecision
 
 class SequenceVisualizator():
     def __init__(self, objectDetector: GeneralVideoObjectDetector, config: Dict, device: torch.device | str | None = None):
@@ -28,6 +29,38 @@ class SequenceVisualizator():
         self.objectDetector = objectDetector
         self.labels = self.objectDetector.labels
 
+    def scale_box(self, box: tuple, img: np.ndarray) -> tuple:
+        xmin, ymin, xmax, ymax = box
+                    
+        img_w = img.shape[1]
+        img_h = img.shape[0]
+
+        xmin *= img_w
+        ymin *= img_h
+        xmax *= img_w
+        ymax *= img_h
+        
+        return xmin, ymin, xmax, ymax
+
+    def visualize_box(self, ax, box: tuple, label: int, color: str) -> None:
+        xmin, ymin, xmax, ymax = box
+        h = ymax - ymin
+        w = xmax - xmin
+        rect = plt.Rectangle((xmin, ymin), w , h,
+                            fill=False, edgecolor=color, linewidth=2)
+        ax.add_patch(rect)
+        ax.text(xmin, ymin - 5, f"{self.labels[label]}", color=color, fontsize=8)
+
+    def calculate_map(self, predicts: list, true_tgts: list) -> float:
+        metric = MeanAveragePrecision(num_classes=len(self.labels), device=self.device)
+        for preds, raw in zip(predicts, true_tgts):
+            tensor_dict = {k: torch.from_numpy(v) for k, v in preds.items()}
+            metric.update([tensor_dict], [raw])
+
+        res = metric.compute()
+        
+        return  res["weighted_mAP"]
+
     def process(self, ds: Dataset):
         ds = ImageSeqVideoDataset(ds)
         test_ds = YoloSeqTestDataset(ds, self.config["model"]["img_size"])
@@ -36,7 +69,7 @@ class SequenceVisualizator():
             n = len(imgs)
             fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
-            img_batch, _ = test_ds[j]
+            img_batch, true_tgts = test_ds[j]
             predicts = self.objectDetector.predict_seq(torch.unsqueeze(img_batch.to("cuda"), 0))
 
             for i, ax in enumerate(axes.flat):
@@ -44,37 +77,18 @@ class SequenceVisualizator():
                 labels = tgt[i]["labels"]
 
                 for (box, label) in zip(boxes, labels): 
-                    xmin, ymin, xmax, ymax = box
-                    h = ymax - ymin
-                    w = xmax - xmin
-                    rect = plt.Rectangle((xmin, ymin), w , h,
-                                        fill=False, edgecolor='red', linewidth=2)
-                    ax.add_patch(rect)
-                    ax.text(xmin, ymin - 5, f"{self.labels[label]}", color='red', fontsize=8)
+                    self.visualize_box(ax, box, label, 'red')
 
                 for (box, label) in zip(predicts[i]["boxes"], predicts[i]["classes"]):
-                    xmin, ymin, xmax, ymax = box
-                    
-                    img_w = imgs[0].shape[1]
-                    img_h = imgs[0].shape[0]
-
-                    xmin *= img_w
-                    ymin *= img_h
-                    xmax *= img_w
-                    ymax *= img_h
-
-                    h = ymax - ymin
-                    w = xmax - xmin
-                    rect = plt.Rectangle((xmin, ymin), w , h,
-                                        fill=False, edgecolor='green', linewidth=2)
-                    ax.add_patch(rect)
-                    ax.text(xmin, ymin - 5, f"{self.labels[label]}", color='green', fontsize=8)
+                    self.visualize_box(ax, self.scale_box(box, imgs[0]), label, 'green')
                 
                 ax.axis("off")
                 ax.set_title("Image " + str(i))
 
                 # ax.imshow(img_batch[i].permute(1, 2, 0).cpu().numpy())
                 ax.imshow(imgs[i] / 255)
+
+            print("Weighted map on image:", self.calculate_map(predicts, true_tgts))
 
             plt.show()
 

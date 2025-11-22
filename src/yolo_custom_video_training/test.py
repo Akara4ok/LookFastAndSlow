@@ -17,7 +17,7 @@ config['train']['batch_size'] = 1
 config['model']['img_size'] = 640
 
 objectDetector = CustomVideoObjectDetector(config, VOCDataset.VOC_CLASSES)
-objectDetector.load_weights("Model/Yolo/fast_slow_2.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)
+objectDetector.load_weights("Model/Yolo/fast_slow_2.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt")
 
 voc_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
