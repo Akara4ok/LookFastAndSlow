@@ -47,13 +47,7 @@ map = {
     62: 0
 }
 
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
-
-objectDetector = GeneralImageObjectDetector(config, labels, map)
+objectDetector = GeneralImageObjectDetector(config, VOCDataset.VOC_CLASSES, map)
 objectDetector.load_weights("Model/yolo11x.pt")
 
 test_ds = VOCDataset(config['data']['path'], "2007", "test", False)

@@ -8,6 +8,7 @@ from pathlib import Path
 from ConfigUtils.config import Config
 from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
+from Dataset.voc_dataset import VOCDataset
 
 
 logging.basicConfig(level=logging.INFO)
@@ -20,14 +21,7 @@ config['train']['batch_size'] = 1
 config['model']['img_size'] = 640
 config["data"]["test_percent"] = 0.01
 
-
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
-
-objectDetector = CustomImageObjectDetector(config, labels)
+objectDetector = CustomImageObjectDetector(config, VOCDataset.VOC_CLASSES)
 objectDetector.load_weights("Model/Yolo/yolo11n_voc.pt")
 
 videoProcessor = VideoProcessor(objectDetector)

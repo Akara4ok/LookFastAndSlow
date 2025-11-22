@@ -4,13 +4,10 @@ from typing import Dict
 import torch
 import torch.nn as nn
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
 
 from ultralytics import YOLO
 
-from ObjectDetector.map import MeanAveragePrecision
 from ObjectDetector.Yolo.general_video_object_detector import GeneralVideoObjectDetector
-from Dataset.Yolo.YoloSegDataset import YoloSeqTestDataset, InferenceTransform
 
 class YoloImageSeqTester(GeneralVideoObjectDetector):
     def __init__(self, config: Dict, labels = None, map_classes = None, device: torch.device | str | None = None):

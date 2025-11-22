@@ -21,13 +21,7 @@ voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
 voc_ds = YoloSeqDataset(voc_ds, 640)
 
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
-
-detector = CustomVideoObjectDetector(config, labels)
+detector = CustomVideoObjectDetector(config, VOCDataset.VOC_CLASSES)
 
 loader = detector._make_loader(voc_ds, False)
 

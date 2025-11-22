@@ -14,6 +14,7 @@ from ConfigUtils.config import Config
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from visualize import visulize          # unchanged helper
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
+from Dataset.voc_dataset import VOCDataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,12 +24,7 @@ cfg['anchors']['post_iou_threshold'] = 0.2
 cfg['anchors']['confidence'] = 0.5
 cfg['anchors']['top_k_classes'] = 200
 
-labels = [ "background",
-    "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]                      # background idx 0 + 1 class
+labels = [ "background" ] + VOCDataset.VOC_CLASSES
 
 detector = ImageObjectDetector(labels, cfg, specs)
 

@@ -8,6 +8,7 @@ import logging
 from ObjectDetector.Yolo.general_image_object_detector import GeneralImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
+from Dataset.voc_dataset import VOCDataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,12 +20,7 @@ config['anchors']['post_iou_threshold'] = 0.2
 config['anchors']['confidence'] = 0.5
 config['anchors']['top_k_classes'] = 200
 
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
-objectDetector = GeneralImageObjectDetector(config)
+objectDetector = GeneralImageObjectDetector(config, VOCDataset.VOC_CLASSES)
 objectDetector.load_weights("Model/best.pt")
 
 videoProcessor = VideoProcessor(objectDetector)

@@ -9,6 +9,7 @@ import logging
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.video_processor import VideoProcessor
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
+from Dataset.voc_dataset import VOCDataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,12 +21,7 @@ config['anchors']['post_iou_threshold'] = 0.2
 config['anchors']['confidence'] = 0.6
 config['anchors']['top_k_classes'] = 200
 
-labels = [ "background",
-    "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
+labels = [ "background" ] + VOCDataset.VOC_CLASSES
 
 torch.set_num_threads(8)
 

@@ -23,14 +23,7 @@ config['train']['epochs'] = 10
 config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 1
 
-
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
-
-objectDetector = GeneralImageObjectDetector(config, labels)
+objectDetector = GeneralImageObjectDetector(config, VOCDataset.VOC_CLASSES)
 objectDetector.load_weights("Model/yolo11x_test.pt")
 
 test_ds = VOCDataset(config['data']['path'], "2007", "test", False)

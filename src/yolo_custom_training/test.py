@@ -25,15 +25,9 @@ config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 1
 
 
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
 
-
-# objectDetector = GeneralImageObjectDetector(config, labels)
-objectDetector = CustomImageObjectDetector(config, labels)
+# objectDetector = GeneralImageObjectDetector(config, VOCDataset.VOC_CLASSES)
+objectDetector = CustomImageObjectDetector(config, VOCDataset.VOC_CLASSES)
 objectDetector.load_weights("Model/Yolo/yolo11n_voc_2.pt")
 
 test_ds = VOCDataset(config['data']['path'], "2007", "test", False)
@@ -45,7 +39,7 @@ print(map)
 # test_ds = VOCDataset(config['data']['path'], "2007", "trainval", False)
 # for img, tgt in test_ds:
 #     prediction = objectDetector.predict(img)
-#     visulize(img / 255, prediction, labels)
+#     visulize(img / 255, prediction, VOCDataset.VOC_CLASSES)
 
 
 

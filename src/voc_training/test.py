@@ -28,12 +28,7 @@ test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", False)
 
 img_to_test = 96
 
-labels = [ "background",
-    "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
+labels = [ "background" ] + VOCDataset.VOC_CLASSES
 objectDetector = ImageObjectDetector(labels, config, specs)
 objectDetector.load_weights(config["model"]["path"])
 

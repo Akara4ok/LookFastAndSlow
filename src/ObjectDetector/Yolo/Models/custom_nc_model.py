@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.head import Detect
 from ultralytics import YOLO
+from Dataset.voc_dataset import VOCDataset
 
 class CustomDetect(Detect):
     def __init__(self, nc: int, ch: tuple = ()):
@@ -80,12 +81,7 @@ def build_test_model(labels = list, pretrained_backbone_weights: str = "yolo11x.
 if __name__ == "__main__":
     # model = YOLO("Model/yolo11x_test.pt")
 
-    labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-                "bus", "car", "cat", "chair", "cow",
-                "diningtable", "dog", "horse", "motorbike", "person",
-                "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-            ]
-    model = build_test_model(labels, "Model/yolo11x.pt")
+    model = build_test_model(VOCDataset.VOC_CLASSES, "Model/yolo11x.pt")
 
     torch.save({"model": model, "state_dict": model.state_dict()}, "Model/yolo11x_test.pt")
     print("Saved yolo11x_test.pt")

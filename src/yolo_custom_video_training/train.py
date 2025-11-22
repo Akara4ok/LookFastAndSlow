@@ -23,13 +23,7 @@ config['train']['batch_size'] = 1
 config["data"]["test_percent"] = 0.01
 
 
-labels = [ "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow",
-    "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
-]
-
-objectDetector = CustomVideoObjectDetector(config, labels)
+objectDetector = CustomVideoObjectDetector(config, VOCDataset.VOC_CLASSES)
 objectDetector.load_weights(None, "Model/Yolo/yolo11n_voc_2.pt", "Model/Yolo/yolo11x_voc_2.pt", True)
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
