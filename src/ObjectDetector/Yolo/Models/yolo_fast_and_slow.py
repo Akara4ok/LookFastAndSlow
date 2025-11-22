@@ -31,7 +31,6 @@ class YoloFastAndSlow(nn.Module):
                  names,
                  weights_small="yolo11n.pt",
                  weights_large="yolo11x.pt",
-                 use_large_head = False,
                  device="cuda"):
         super().__init__()
         self.device = device
