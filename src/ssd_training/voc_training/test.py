@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from ConfigUtils.config import Config
 from pathlib import Path
@@ -11,7 +11,7 @@ from Dataset.SSDLite.test_dataset import TestDataset
 from Dataset.voc_dataset import VOCDataset
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
-from visualize import visulize          # unchanged helper
+from ssd_training.visualize import visulize          # unchanged helper
 
 logging.basicConfig(level=logging.INFO)
 

@@ -10,16 +10,11 @@ from ObjectDetector.Yolo.custom_video_object_detector import CustomVideoObjectDe
 from ObjectDetector.video_processor import VideoProcessor
 from Dataset.voc_dataset import VOCDataset
 
-
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/yolo11x_custom.pt"
-config['train']['epochs'] = 10
-config['data']['path'] = "Data/VOCdevkit"
 config['train']['batch_size'] = 1
 config['model']['img_size'] = 640
-config["data"]["test_percent"] = 0.01
 
 objectDetector = CustomVideoObjectDetector(config, VOCDataset.VOC_CLASSES, True)
 objectDetector.load_weights("Model/Yolo/fast_slow_2.pt", "Model/Yolo/yolo11n_voc.pt", "Model/Yolo/yolo11x_voc.pt", True)

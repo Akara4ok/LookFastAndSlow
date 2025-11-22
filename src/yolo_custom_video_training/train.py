@@ -10,15 +10,12 @@ from Dataset.voc_dataset import VOCDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 from Dataset.Yolo.YoloSegDataset import YoloSeqDataset
 from ObjectDetector.Yolo.custom_video_object_detector import CustomVideoObjectDetector
-from visualize import visulize
 
 
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 config['model']['path'] = "Model/Yolo/test11x.pt"
-config['train']['epochs'] = 10
-config['data']['path'] = "Data/VOCdevkit"
 config['train']['batch_size'] = 1
 config["data"]["test_percent"] = 0.01
 

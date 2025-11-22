@@ -9,14 +9,11 @@ from ConfigUtils.config import Config
 from Dataset.voc_dataset import VOCDataset
 from Dataset.Yolo.YoloDataset import YoloDataset
 from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
-from visualize import visulize
-
 
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
 config['model']['path'] = "Model/yolo11x_custom.pt"
-config['train']['epochs'] = 10
 config['data']['path'] = "Data/VOCdevkit"
 config['train']['batch_size'] = 1
 

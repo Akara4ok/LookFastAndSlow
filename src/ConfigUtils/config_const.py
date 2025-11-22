@@ -19,7 +19,7 @@ PRETRAIN = None
 #train
 LOGS_PATH = "Logs/"
 SEED = 42
-EPOCHS = 30
+EPOCHS = 10
 BATCH_SIZE = 8
 AUGMENTATION = True
 

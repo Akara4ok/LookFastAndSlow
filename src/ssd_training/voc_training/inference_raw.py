@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import logging
 from pathlib import Path
@@ -12,7 +12,7 @@ from torchvision import transforms
 
 from ConfigUtils.config import Config
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
-from visualize import visulize          # unchanged helper
+from ssd_training.visualize import visulize          # unchanged helper
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 from Dataset.voc_dataset import VOCDataset
 

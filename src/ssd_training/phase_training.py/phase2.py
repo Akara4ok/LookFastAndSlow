@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from ConfigUtils.config import Config
 from pathlib import Path
@@ -10,7 +10,6 @@ from Dataset.SSDLite.youtube_bb_dataset import YoutubeBBDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 from Dataset.SSDLite.map_labels_wrapper import MapLabelsWrapper, UNIFIED_CLASS_NAMES
 from Dataset.SSDLite.mixed_seq_dataset import MixedSeqDataset
-from ObjectDetector.SSDLite.phase1_trainer import Phase1Trainer
 from ObjectDetector.SSDLite.video_object_detector import VideoObjectDetector
 from ObjectDetector.SSDLite.Anchors.mobilenet_anchors import specs
 
