@@ -4,12 +4,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 from Dataset.voc_dataset import VOCDataset
+from Dataset.single_video_dataset import SingleVideoDataset
 from Dataset.Yolo.YoloDataset import YoloTestDataset
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
+voc_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", use_cache=False)
 ds = YoloTestDataset(voc_ds, 340)
 
 for img, tgt in ds:

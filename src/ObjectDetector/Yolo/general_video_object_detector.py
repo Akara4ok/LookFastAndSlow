@@ -139,8 +139,8 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
 
         res = metric.compute()
         
-        # return  res["weighted_mAP"]
-        return  res["mAP"]
+        return  res["weighted_mAP"]
+        # return  res["mAP"]
     
     def test_collate(self, batch):
         imgs, boxes, labels, raw = [], [], [], []

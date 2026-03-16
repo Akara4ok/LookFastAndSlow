@@ -61,7 +61,6 @@ class SequenceVisualizator():
         return  res["weighted_mAP"]
 
     def process(self, ds: Dataset):
-        ds = ImageSeqVideoDataset(ds)
         test_ds = YoloSeqTestDataset(ds, self.config["model"]["img_size"])
 
         for j, (img_batch, true_tgts) in enumerate(test_ds):
@@ -76,8 +75,8 @@ class SequenceVisualizator():
                 for (box, label) in zip(boxes, labels):
                     self.visualize_box(ax, self.scale_box(box, img_batch[0]), label, 'red')
 
-                for (box, label) in zip(predicts[i]["boxes"], predicts[i]["classes"]):
-                    self.visualize_box(ax, self.scale_box(box, img_batch[0]), label, 'green')
+                # for (box, label) in zip(predicts[i]["boxes"], predicts[i]["classes"]):
+                    # self.visualize_box(ax, self.scale_box(box, img_batch[0]), label, 'green')
                 
                 ax.axis("off")
                 ax.set_title("Image " + str(i))

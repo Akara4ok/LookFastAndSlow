@@ -5,11 +5,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from Dataset.voc_dataset import VOCDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
+from Dataset.single_video_dataset import SingleVideoDataset
 
 import numpy as np
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
-ds = ImageSeqVideoDataset(voc_ds)
+ds = SingleVideoDataset("Data/SingleVideo", 6)
+# ds = ImageSeqVideoDataset(voc_ds)
 
 skip = 0
 for imgs, tgt in ds:

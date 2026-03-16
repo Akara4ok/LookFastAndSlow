@@ -28,8 +28,8 @@ voc_ds = ImageSeqVideoDataset(voc_ds)
 voc_ds = YoloSeqDataset(voc_ds, 640)
 
 freeze = {
-    # "backbone": (1, None, None),
-    # "temporal": (1, 10, None),
+    "backbone": (1, 15, None),
+    "temporal": (1, 10, None),
     # "head": (1, 1, None)
 }
 

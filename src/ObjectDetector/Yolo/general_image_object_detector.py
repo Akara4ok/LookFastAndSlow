@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from ultralytics import YOLO
 
 from ObjectDetector.map import MeanAveragePrecision
-from Dataset.Yolo.YoloTestDataset import YoloTestDataset
+from Dataset.Yolo.YoloDataset import YoloTestDataset
 
 class GeneralImageObjectDetector:
     def __init__(self, config: Dict, labels = None, map_classes = None, device: torch.device | str | None = None):

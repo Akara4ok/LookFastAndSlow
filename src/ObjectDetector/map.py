@@ -83,9 +83,9 @@ class MeanAveragePrecision:
             if total_gt == 0:
                 continue
 
-            if len(det_cls) == 0:
-                aps[cls] = 0.0
-                continue
+            # if len(det_cls) == 0:
+            #     aps[cls] = 0.0
+            #     continue
 
             
             det_cls.sort(key=lambda x: x[1], reverse=True)
@@ -116,15 +116,15 @@ class MeanAveragePrecision:
 
             TP = int(tp.sum()) if len(aps) else 0
             FP = int(fp.sum()) if len(aps) else 0
-            print("================")
-            print("Class", cls)
-            print("GT", total_gt)
-            print("TP", TP)
-            print("FP", int(fp.sum()) if len(aps) else 0)
-            print("FN", max(total_gt - TP, 0))
-            print("Recall", TP / total_gt if total_gt > 0 else 0.0)
-            print("Precision ", TP / (TP + FP) if (TP + FP) > 0 else 0.0)
-            print("ap", ap)
+            # print("================")
+            # print("Class", cls)
+            # print("GT", total_gt)
+            # print("TP", TP)
+            # print("FP", int(fp.sum()) if len(aps) else 0)
+            # print("FN", max(total_gt - TP, 0))
+            # print("Recall", TP / total_gt if total_gt > 0 else 0.0)
+            # print("Precision ", TP / (TP + FP) if (TP + FP) > 0 else 0.0)
+            # print("ap", ap)
             
         if len(aps) > 0:
             mAP = float(np.mean(list(aps.values())))

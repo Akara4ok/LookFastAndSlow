@@ -134,10 +134,10 @@ class YoloFastAndSlow(nn.Module):
         return loss_value
     
     def choose_backbone_adapter(self, t: int):
-        return (self.backbone_large, self.adapter_large, True) if (t % 2 == 0) else (self.backbone_small, self.adapter_small, False)
+        return (self.backbone_large, self.adapter_large, True) if (t % 6 == 0) else (self.backbone_small, self.adapter_small, False)
     
     def choose_cur_backbone_adapter(self):
-        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 10 == 0) else (self.backbone_small, self.adapter_small, False)
+        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 60 == 0) else (self.backbone_small, self.adapter_small, False)
 
     @torch.no_grad()
     def postprocess(self, preds: torch.Tensor, imgs: torch.Tensor):

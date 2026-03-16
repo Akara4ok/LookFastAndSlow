@@ -17,7 +17,7 @@ config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 1
 
 objectDetector = CustomImageObjectDetector(config, VOCDataset.VOC_CLASSES)
-objectDetector.load_weights("Model/Yolo/yolo11n_voc_2.pt")
+objectDetector.load_weights("Model/Yolo/yolo11x_voc_2.pt")
 
 test_ds = VOCDataset(config['data']['path'], "2007", "test", False)
 

@@ -4,7 +4,7 @@ import numpy as np
 from torchvision import transforms
 from torch.utils.data import Dataset
 
-from Dataset.augmentation import ToNormalizedCenterCoords, ToNormalizedCoords
+from Dataset.augmentation import Letterbox, LetterboxRemapBox
 
 class InferenceTransform:
     def __init__(self, size: int):
@@ -46,28 +46,27 @@ class InferenceTransform:
         img = torch.from_numpy(img).permute(2, 0, 1).contiguous()
         img = img.float().div_(255.0)
         return img.to("cuda", non_blocking=True), self.lb_params
-
-            
-
+    
 class ResizeNormalizeSeqYolo():
-    def __init__(self, size: int, normalize: ToNormalizedCoords):
+    def __init__(self, size: int, return_xyxy: bool):
         self.size = size
-        self.normalize = normalize
+        self.letterbox = Letterbox(size=640)
+        self.remap = LetterboxRemapBox(return_xyxy)
         
     def __call__(self, imgs: list[np.ndarray], tgts: list[dict]):
         imgs_out = []
         tgts_out = []
 
-
         for img, tgt in zip(imgs, tgts):
-            img, tgt = self.normalize(img, tgt)
-            img = (img).astype(np.uint8)
+            img_lb, r, pad = self.letterbox(img)
+            boxes_norm = self.remap(tgt["boxes"], r, pad, out_size=640)
+
+            img = (img_lb).astype(np.uint8)
             img = transforms.ToTensor()(img)
-            img = transforms.Resize((self.size, self.size))(img)
             imgs_out.append(img)
 
             tgts_out.append({
-                "boxes": torch.tensor(tgt["boxes"], dtype=torch.float32),
+                "boxes": torch.tensor(boxes_norm, dtype=torch.float32),
                 "labels": torch.tensor(tgt["labels"], dtype=torch.int64),
             })
 
@@ -79,7 +78,7 @@ class YoloSeqDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):
         super().__init__()
         self.dataset = dataset
-        self.transforms = ResizeNormalizeSeqYolo(img_size, ToNormalizedCenterCoords())
+        self.transforms = ResizeNormalizeSeqYolo(img_size, False)
 
     def __len__(self):
         return len(self.dataset)
@@ -92,7 +91,7 @@ class YoloSeqTestDataset(Dataset):
     def __init__(self, dataset: Dataset, img_size: int):
         super().__init__()
         self.dataset = dataset
-        self.transforms = ResizeNormalizeSeqYolo(img_size, ToNormalizedCoords())
+        self.transforms = ResizeNormalizeSeqYolo(img_size, True)
 
     def __len__(self):
         return len(self.dataset)
