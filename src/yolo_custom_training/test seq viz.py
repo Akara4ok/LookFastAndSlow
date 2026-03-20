@@ -17,9 +17,9 @@ config['model']['img_size'] = 640
 
 
 objectDetector = YoloImageSeqTester(config, VOCDataset.VOC_CLASSES)
-objectDetector.load_weights("Model/Yolo/yolo11x_voc_2.pt")
+objectDetector.load_weights("Model/Yolo/yolo11x_voc.pt")
 
-voc_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", use_cache=False)
+voc_ds = VOCDataset("Data/VOCdevkit", "2007", "train", use_cache=False)
 voc_ds = ImageSeqVideoDataset(voc_ds)
 
 visualizator = SequenceVisualizator(objectDetector, config)

@@ -18,7 +18,7 @@ config['train']['batch_size'] = 1
 config['model']['img_size'] = 640
 
 objectDetector = CustomImageObjectDetector(config, VOCDataset.VOC_CLASSES)
-objectDetector.load_weights("Model/Yolo/yolo11n_voc.pt")
+objectDetector.load_weights("Model/Yolo/yolo11x_voc.pt")
 
 videoProcessor = VideoProcessor(objectDetector)
-videoProcessor.process_video("Data/video/5.mp4", "Data/output.mp4", True, step_mode=False, output_fps=60, compare_model=objectDetector, left_title="yolo11n", right_title="yoloy11x")
+videoProcessor.process_video("Data/video/4.mp4", "Data/output.mp4", True)

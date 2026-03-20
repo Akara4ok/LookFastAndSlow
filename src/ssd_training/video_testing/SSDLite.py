@@ -14,7 +14,7 @@ from Dataset.voc_dataset import VOCDataset
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/vocqwe.weights.h5"
+config['model']['path'] = "Model/model.weights.h5"
 config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 32
 config['anchors']['post_iou_threshold'] = 0.2
@@ -25,7 +25,7 @@ labels = [ "background" ] + VOCDataset.VOC_CLASSES
 
 torch.set_num_threads(8)
 
-objectDetector = ImageObjectDetector(labels, config, specs)
+objectDetector = ImageObjectDetector(labels, config, specs, None, True)
 objectDetector.load_weights(config["model"]["path"])
 
 videoProcessor = VideoProcessor(objectDetector)

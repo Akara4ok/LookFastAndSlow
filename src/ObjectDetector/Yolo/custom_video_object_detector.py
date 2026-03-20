@@ -83,6 +83,12 @@ class CustomVideoObjectDetector(GeneralVideoObjectDetector):
                 xywh = batch["boxes"][b][t]
                 labels = batch["labels"][b][t]
 
+                if xywh.ndim == 1:
+                    if xywh.numel() == 0:
+                        xywh = xywh.reshape(0, 4)
+                    else:
+                        raise ValueError(f"[prep_batch] seq {b}, frame {t}: bad boxes shape {xywh.shape}")
+
                 if xywh.shape[0] != labels.shape[0]:
                     raise ValueError(f"[prep_batch] seq {b}, frame {t}: boxes({xywh.shape[0]}) != labels({labels.shape[0]})")
 

@@ -16,26 +16,20 @@ from ssd_training.visualize import visulize          # unchanged helper
 logging.basicConfig(level=logging.INFO)
 
 config = Config(Path.cwd() / "src/Configs/train.yml").get_dict()
-config['model']['path'] = "Model/voc.weights.h5"
+config['model']['path'] = "Model/model.weights.h5"
 config['data']['path'] = "Data/VOCDevKitTest"
 config['train']['batch_size'] = 32
-config['anchors']['post_iou_threshold'] = 0.45
-config['anchors']['confidence'] = 0.01
-config['anchors']['top_k_classes'] = 200
+config['anchors']['post_iou_threshold'] = 0.2
+config['anchors']['confidence'] = 0.6
+config['anchors']['top_k_classes'] = 10
 
-test_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", False)
-# test_ds = TestDataset(VOCDataset("Data/VOCDevKitTest", "2007", "test", False), 300)
+test_ds = VOCDataset("Data/VOCdevkit", "2007", "train", False)
 
 img_to_test = 96
 
 labels = [ "background" ] + VOCDataset.VOC_CLASSES
 objectDetector = ImageObjectDetector(labels, config, specs)
 objectDetector.load_weights(config["model"]["path"])
-
-# for img, tgt in test_ds:
-#     prediction = objectDetector.predict(img)
-#     visulize(img.permute(1, 2, 0), prediction, labels)
-#     break
 
 map = objectDetector.test(test_ds, img_to_test)
 print(map)

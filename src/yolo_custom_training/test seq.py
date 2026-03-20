@@ -20,12 +20,10 @@ config['train']['batch_size'] = 1
 
 
 objectDetector = YoloImageSeqTester(config, VOCDataset.VOC_CLASSES)
-objectDetector.load_weights("Model/Yolo/yolo11n_voc_2.pt")
+objectDetector.load_weights("Model/Yolo/yolo11n_voc.pt")
 
-voc_ds = SingleVideoDataset("Data/SingleVideo")
-
-# voc_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", use_cache=False)
-# voc_ds = ImageSeqVideoDataset(voc_ds)
+voc_ds = VOCDataset("Data/VOCDevKitTest", "2007", "test", use_cache=False)
+voc_ds = ImageSeqVideoDataset(voc_ds)
 
 map = objectDetector.test(voc_ds, 96)
 print(map)

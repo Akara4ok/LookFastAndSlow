@@ -10,11 +10,13 @@ class PostProcessor:
                  anchors: Anchors,
                  conf_thresh: float = 0.5,
                  iou_thresh:  float = 0.5,
-                 top_k: int = 1):
+                 top_k: int = 1,
+                 inference = False):
         self.anchors = anchors
         self.conf_thresh = conf_thresh
         self.iou_thresh = iou_thresh
         self.top_k = top_k
+        self.inference = inference
 
     def ssd_postprocess(self, cls_logits: torch.Tensor, pred_loc: torch.Tensor) -> Dict[str, torch.Tensor]:
         scores = F.softmax(cls_logits, dim=-1)
@@ -60,9 +62,17 @@ class PostProcessor:
         scores_cat = scores_cat[order]
         labels_cat = labels_cat[order]
 
+        if self.inference:
+            return dict(
+                boxes=boxes_cat.detach().cpu().numpy(),
+                scores=scores_cat.detach().cpu().numpy(),
+                classes=labels_cat.detach().cpu().numpy(),
+            )
+        
         return dict(boxes=boxes_cat,
                     scores=scores_cat,
                     classes=labels_cat)
+
     
     def simple_postprocess(self, cls_logits: torch.Tensor, pred_loc: torch.Tensor) -> Dict[str, torch.Tensor]:
         """

@@ -6,16 +6,23 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Dataset.voc_dataset import VOCDataset
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
 from Dataset.single_video_dataset import SingleVideoDataset
+from Dataset.multiple_video_dataset import MultipleVideoDataset
 
 import numpy as np
 
 voc_ds = VOCDataset("Data/VOCdevkit", "2007", "trainval", use_cache=False)
-ds = SingleVideoDataset("Data/SingleVideo", 6)
+# ds = SingleVideoDataset("Data/video/qwe/2", 6)
+ds = MultipleVideoDataset("Data/video/MultipleVideo", 6)
 # ds = ImageSeqVideoDataset(voc_ds)
+
+print(len(ds))
 
 skip = 0
 for imgs, tgt in ds:
-    if(skip < 5):
+    if(skip == 2):
+        print(len(imgs), imgs[0].shape)
+        break
+    if(skip < 200):
         skip+=1
         continue
     n = len(imgs)

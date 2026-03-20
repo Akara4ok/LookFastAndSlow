@@ -19,7 +19,7 @@ from ObjectDetector.map import MeanAveragePrecision
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class ImageObjectDetector:
-    def __init__(self, labels: List[str], config: Dict, specs: List[AnchorSpec], device: torch.device | str | None = None):
+    def __init__(self, labels: List[str], config: Dict, specs: List[AnchorSpec], device: torch.device | str | None = None, inference = False):
         self.cfg = config
         self.labels = labels
         self.device = torch.device(device or
@@ -34,7 +34,7 @@ class ImageObjectDetector:
         self.post = PostProcessor(self.anchors,
                                   conf_thresh=a_cfg["confidence"],
                                   iou_thresh=a_cfg["post_iou_threshold"],
-                                  top_k=a_cfg["top_k_classes"])
+                                  top_k=a_cfg["top_k_classes"], inference=inference)
 
         self.criterion = SSDLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(),

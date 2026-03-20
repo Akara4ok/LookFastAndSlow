@@ -5,6 +5,9 @@ import itertools
 
 import torch
 
+MIN_SCALE = 0.20
+MAX_SCALE = 0.90
+
 AnchorSizeRange = collections.namedtuple('AnchorSizeRange', ['min', 'max'])
 AnchorSpec = collections.namedtuple('AnchorSpec', ['map_dim', 'stride', 'size_range', 'aspect_ratios'])
 
@@ -116,4 +119,3 @@ class Anchors:
             (boxes[..., :2] + boxes[..., 2:]) / 2,
             boxes[..., 2:] - boxes[..., :2]
         ], boxes.dim() - 1)
-        
