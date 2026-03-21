@@ -92,6 +92,39 @@ class SingleVideoDataset(Dataset):
     def __len__(self):
         return len(self.image_ids) // self.seq_len
 
+    def build_cache(self):
+        frame_indices = []
+    
+        for frame_id_str in self.image_ids:
+            frame_num = int(frame_id_str.replace("frame_", ""))
+            frame_indices.append(frame_num)
+    
+        frame_indices = sorted(set(frame_indices))
+    
+        if self.cache_frames:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    
+            current_frame = 0
+
+            for frame_idx in frame_indices:
+                if(frame_idx != current_frame):
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    current_frame = frame_idx
+
+                ok, frame = self.cap.read()
+                if not ok:
+                    break
+    
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.frame_cache[current_frame] = frame.copy()
+    
+                current_frame += 1
+            
+        if self.cache_annotations:
+            for frame_id_str in self.image_ids:
+                xml_path = self.root / "Annotations" / f"{frame_id_str}.xml"
+                self._parse_annotation(xml_path)
+
     def __getitem__(self, idx):
         frame_idx = self.seq_len * idx
         frames = []

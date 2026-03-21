@@ -32,6 +32,11 @@ class MultipleVideoDataset(Dataset):
             for local_idx in range(num_sequences):
                 self.index_map.append((dataset_idx, local_idx))
 
+    def build_cache(self):
+        for dat in self.video_datasets:
+            dat.build_cache()
+
+
     def __len__(self):
         return len(self.index_map)
 
