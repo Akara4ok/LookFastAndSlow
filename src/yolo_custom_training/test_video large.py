@@ -21,4 +21,4 @@ objectDetector = CustomImageObjectDetector(config, VOCDataset.VOC_CLASSES)
 objectDetector.load_weights("Model/Yolo/yolo11x_voc.pt")
 
 videoProcessor = VideoProcessor(objectDetector)
-videoProcessor.process_video("Data/video/4.mp4", "Data/output.mp4", True)
+videoProcessor.process_video("Data/video/1.mp4", "Data/output.mp4", True, output_fps=60)

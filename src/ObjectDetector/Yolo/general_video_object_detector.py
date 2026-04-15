@@ -88,7 +88,7 @@ class GeneralVideoObjectDetector(GeneralImageObjectDetector):
         if isinstance(frame, np.ndarray):
             frame, lb_params = self.inference_transform(frame)
             frame = frame.unsqueeze(0)
-        res = self.model.predict(frame)
+        res = self.model.predict(frame, verbose=False)
         return self.postprocess_single(res, True, original_size, lb_params)
     
     @torch.no_grad()

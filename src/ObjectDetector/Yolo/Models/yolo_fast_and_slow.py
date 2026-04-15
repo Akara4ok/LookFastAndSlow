@@ -78,8 +78,8 @@ class YoloFastAndSlow(nn.Module):
         self.current_t = 0
         self.state = None
 
-        self.profiler = Profiler(10)
-        # self.profiler = None
+        # self.profiler = Profiler(10)
+        self.profiler = None
 
         for p in self.parameters():
             p.requires_grad = True
@@ -134,10 +134,10 @@ class YoloFastAndSlow(nn.Module):
         return loss_value
     
     def choose_backbone_adapter(self, t: int):
-        return (self.backbone_large, self.adapter_large, True) if (t % 6 == 0) else (self.backbone_small, self.adapter_small, False)
+        return (self.backbone_large, self.adapter_large, True) if (t % 2 == 0) else (self.backbone_small, self.adapter_small, False)
     
     def choose_cur_backbone_adapter(self):
-        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 40 == 0) else (self.backbone_small, self.adapter_small, False)
+        return (self.backbone_large, self.adapter_large, True) if (self.current_t % 6 == 0) else (self.backbone_small, self.adapter_small, False)
 
     @torch.no_grad()
     def postprocess(self, preds: torch.Tensor, imgs: torch.Tensor):
@@ -205,7 +205,7 @@ class YoloFastAndSlow(nn.Module):
         else:
             return self.forward_frame(frames)
         
-    def predict(self, frames: torch.Tensor):
+    def predict(self, frames: torch.Tensor, verbose=False):
         return self.forward(frames)
     
     def profile(self, key: str):
