@@ -84,7 +84,7 @@ class SequenceVisualizator():
                 ax.imshow(img_batch[i].permute(1, 2, 0).cpu().numpy())
                 # ax.imshow(imgs[i] / 255)
 
-            print("Weighted map on image:", self.calculate_map(predicts, true_tgts))
+            # print("Weighted map on image:", self.calculate_map(predicts, true_tgts))
 
             plt.show()
 

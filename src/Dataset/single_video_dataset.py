@@ -124,6 +124,22 @@ class SingleVideoDataset(Dataset):
             for frame_id_str in self.image_ids:
                 xml_path = self.root / "Annotations" / f"{frame_id_str}.xml"
                 self._parse_annotation(xml_path)
+            
+    def get_available_frame_nums(self):
+        return [int(frame_id_str.replace("frame_", "")) for frame_id_str in self.image_ids]
+
+    def get_annotation_by_frame_num(self, frame_num: int):
+        frame_id_str = f"frame_{frame_num:06d}"
+        xml_path = self.root / "Annotations" / f"{frame_id_str}.xml"
+
+        if not xml_path.exists():
+            return (
+                np.zeros((0, 4), dtype=np.float32),
+                np.zeros((0,), dtype=np.int64),
+            )
+
+        return self._parse_annotation(xml_path)
+
 
     def __getitem__(self, idx):
         frame_idx = self.seq_len * idx

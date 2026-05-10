@@ -1,10 +1,12 @@
 import argparse
+import os
 
 import logging
 from pathlib import Path
 
 from ConfigUtils.config import Config
 from Dataset.image_video_seq_dataset import ImageSeqVideoDataset
+from Dataset.single_video_dataset import SingleVideoDataset
 from ObjectDetector.SSDLite.image_object_detector import ImageObjectDetector
 from ObjectDetector.Yolo.custom_image_object_detector import CustomImageObjectDetector
 from ObjectDetector.Yolo.custom_video_object_detector import CustomVideoObjectDetector
@@ -62,6 +64,12 @@ def create_model(config: dict, model_name: str, test: bool) -> GeneralImageObjec
         return objectDetector
     
     return None
+
+def create_dataset(video_path: str):
+    if(not os.path.exists(f'Data/video/{video_path}')):
+        return None
+    return SingleVideoDataset(f'Data/video/{video_path}')
+    
         
 def perform_test(objectDetector: GeneralImageObjectDetector, model_name: str) -> float:
     img_to_test = 96
@@ -92,7 +100,18 @@ if __name__ == "__main__":
     if(args.video is not None):
         video_path = args.video
         videoProcessor = VideoProcessor(objectDetector1)
-        videoProcessor.process_video(f'Data/video/{video_path}.mp4', "Data/output.mp4", True, step_mode=False, output_fps=30, compare_model=objectDetector2, left_title=args.model, right_title=args.model2)
+        videoProcessor.process_video(
+            f'Data/video/{video_path}.mp4', 
+            "Data/output.mp4", 
+            True, 
+            step_mode=False, 
+            output_fps=30, 
+            compare_model=objectDetector2, 
+            left_title=args.model, 
+            right_title=args.model2,
+            gt_dataset=create_dataset(video_path),
+            window_size=(2600, 1400)
+            )
     
     if(args.test):
         print(perform_test(objectDetector1, args.model))

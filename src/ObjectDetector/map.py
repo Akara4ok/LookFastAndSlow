@@ -61,26 +61,43 @@ class MeanAveragePrecision:
         aps = {}
         gts_per_class = {}
 
+        per_class_stats = {}
+
+        total_tp_all = 0
+        total_fp_all = 0
+        total_fn_all = 0
+
         for cls in range(self.C):
             det_cls = []
             gt_per_img = {}
 
             total_gt = 0
-            for img_id, (d, g) in enumerate(zip(self.detections,
-                                                self.groundtruth)):
-                m = d["labels"] == cls
-                for box, score in zip(d["boxes"][m], d["scores"][m]):
+            for img_id, (d, g) in enumerate(zip(self.detections, self.groundtruth)):
+                det_mask = d["labels"] == cls
+                for box, score in zip(d["boxes"][det_mask], d["scores"][det_mask]):
                     det_cls.append((img_id, score, box))
 
-                mask = g["labels"] == cls
+                gt_mask = g["labels"] == cls
                 gt_per_img[img_id] = {
-                    "boxes": g["boxes"][mask],
-                    "det":   np.zeros(mask.sum(), dtype=bool)
+                    "boxes": g["boxes"][gt_mask],
+                    "det": np.zeros(gt_mask.sum(), dtype=bool)
                 }
-                total_gt += mask.sum()
+                total_gt += gt_mask.sum()
 
             gts_per_class[cls] = total_gt
             if total_gt == 0:
+                FP = len(det_cls)
+
+                per_class_stats[cls] = {
+                    "ap": 0.0,
+                    "precision": 0.0,
+                    "recall": 0.0,
+                    "tp": 0,
+                    "fp": FP,
+                    "fn": 0,
+                    "gt_count": 0,
+                }
+                total_fp_all += FP
                 continue
 
             # if len(det_cls) == 0:
@@ -98,8 +115,9 @@ class MeanAveragePrecision:
                 if g["boxes"].size == 0:
                     fp[i] = 1
                     continue
+
                 ious = _box_iou(box_p[None, :], g["boxes"])[0]
-                best = np.argmax(ious)
+                best = int(np.argmax(ious))
                 if ious[best] >= self.iou and not g["det"][best]:
                     tp[i] = 1
                     g["det"][best] = True
@@ -112,10 +130,29 @@ class MeanAveragePrecision:
             recalls = tp_cum / total_gt
             precis = tp_cum / (tp_cum + fp_cum + 1e-6)
             ap = _ap_from_pr(recalls, precis)
-            aps[cls] = ap
+            aps[cls] = float(ap)
 
-            TP = int(tp.sum()) if len(aps) else 0
-            FP = int(fp.sum()) if len(aps) else 0
+            TP = int(tp.sum())
+            FP = int(fp.sum())
+            FN = max(int(total_gt) - TP, 0)
+
+            precision = TP / (TP + FP) if (TP + FP) > 0 else 0.0
+            recall = TP / total_gt if total_gt > 0 else 0.0
+
+            per_class_stats[cls] = {
+                "ap": float(ap),
+                "precision": float(precision),
+                "recall": float(recall),
+                "tp": TP,
+                "fp": FP,
+                "fn": FN,
+                "gt_count": int(total_gt),
+            }
+
+            total_tp_all += TP
+            total_fp_all += FP
+            total_fn_all += FN
+
             # print("================")
             # print("Class", cls)
             # print("GT", total_gt)
@@ -126,10 +163,7 @@ class MeanAveragePrecision:
             # print("Precision ", TP / (TP + FP) if (TP + FP) > 0 else 0.0)
             # print("ap", ap)
             
-        if len(aps) > 0:
-            mAP = float(np.mean(list(aps.values())))
-        else:
-            mAP = 0.0
+        mAP = float(np.mean(list(aps.values()))) if aps else 0.0
 
         total_gt_all = sum(gts_per_class.values())
         if total_gt_all > 0:
@@ -140,8 +174,36 @@ class MeanAveragePrecision:
         else:
             weighted_mAP = 0.0
 
-        out = {"mAP": mAP, "weighted_mAP": weighted_mAP}
+        precision_all = (
+            total_tp_all / (total_tp_all + total_fp_all)
+            if (total_tp_all + total_fp_all) > 0
+            else 0.0
+        )
+        recall_all = (
+            total_tp_all / (total_tp_all + total_fn_all)
+            if (total_tp_all + total_fn_all) > 0
+            else 0.0
+        )
+
+        out = {
+            "mAP": float(mAP),
+            "weighted_mAP": float(weighted_mAP),
+            "precision": float(precision_all),
+            "recall": float(recall_all),
+        }
+
         for c in range(self.C):
-            if c in aps:
-                out[f"AP_{c}"] = aps[c]
+            stats = per_class_stats.get(c, {
+                "ap": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "gt_count": 0,
+            })
+            out[f"gt_count_{c}"] = stats["gt_count"]
+            out[f"precision_{c}"] = stats["precision"]
+            out[f"recall_{c}"] = stats["recall"]
+            out[f"fp_{c}"] = stats["fp"]
+            if stats["gt_count"] > 0:
+                out[f"AP_{c}"] = stats["ap"]
+
         return out
