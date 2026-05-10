@@ -50,7 +50,7 @@ class VOCDataset(Dataset):
         self.img_dir = self.root / f"VOC{self.year}" / "JPEGImages"
         self.ann_dir = self.root / f"VOC{self.year}" / "Annotations"
 
-        self.class_to_idx = {name: i for i, name in enumerate(self.VOC_CLASSES)}
+        self.class_to_idx = {name: k for k, name in enumerate(self.VOC_CLASSES)}
         
         self.use_cache = use_cache
         self.is_cached = False
@@ -98,25 +98,25 @@ class VOCDataset(Dataset):
                      "ImageSets" / "Main" / f"{self.split}.txt")
         return [l.strip() for l in list_file.read_text().splitlines()]
     
-    def _parse_annotation(self, xml_path: Path):
-        tree = ET.parse(xml_path)
+    def read_pascal_xml(self, ann_path: Path):
+        tree = ET.parse(ann_path)
         root = tree.getroot()
 
-        boxes, labels = [], []
+        gt_boxes, gt_labels = [], []
         for obj in root.findall("object"):
             name = obj.find("name").text.lower().strip()
             if name not in self.class_to_idx:
                 continue
 
             bbox = obj.find("bndbox")
-            xmin = float(bbox.find("xmin").text)
-            ymin = float(bbox.find("ymin").text)
-            xmax = float(bbox.find("xmax").text)
-            ymax = float(bbox.find("ymax").text)
-            boxes.append([xmin, ymin, xmax, ymax])
-            labels.append(self.class_to_idx[name])
+            x_max = float(bbox.find("xmax").text)
+            y_max = float(bbox.find("ymax").text)
+            x_min = float(bbox.find("xmin").text)
+            y_min = float(bbox.find("ymin").text)
+            gt_boxes.append([x_min, y_min, x_max, y_max])
+            gt_labels.append(self.class_to_idx[name])
 
-        return np.array(boxes), np.array(labels)
+        return np.array(gt_boxes), np.array(gt_labels)
 
 
     def _build_cache(self):
@@ -132,14 +132,14 @@ class VOCDataset(Dataset):
             img, tgt = self.cached_data[idx]
             return img.copy(), {"boxes": tgt["boxes"].copy(), "labels": tgt["labels"].copy()}
 
-        img_id = self.image_ids[idx]
-        img_path = self.img_dir / f"{img_id}.jpg"
-        ann_path = self.ann_dir / f"{img_id}.xml"
+        id = self.image_ids[idx]
+        path = self.img_dir / f"{id}.jpg"
+        ann_path = self.ann_dir / f"{id}.xml"
 
-        img = np.array(Image.open(img_path).convert("RGB")).astype(np.float32)
+        img = np.array(Image.open(path).convert("RGB")).astype(np.float32)
 
-        boxes, labels = self._parse_annotation(ann_path)
-        target = {"boxes": boxes, "labels": labels}
+        tgt = self.read_pascal_xml(ann_path)
+        target = {"boxes": tgt[0], "labels": tgt[1]}
         
         if(self.use_cache):
             self.cached_data.append((img.copy(),
